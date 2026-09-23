@@ -25,6 +25,8 @@ export interface ValuationScenario {
 
 export interface PredictionResult {
   ticker: string;
+  companyName?: string;
+  sector?: string;
   underlyingTicker: string;
   analysisDate: string;
   currentPriceUnderlyingUsd: number;

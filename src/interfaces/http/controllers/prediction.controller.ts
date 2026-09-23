@@ -35,6 +35,8 @@ export class PredictionController {
       const screenerRanking = predictions.map((p, index) => ({
         rank: index + 1,
         ticker: p.ticker,
+        companyName: p.companyName || p.ticker,
+        sector: p.sector || 'General',
         underlyingTicker: p.underlyingTicker,
         currentPriceCedearArs: p.currentPriceCedearArs,
         idealTargetCedearArs: p.idealBestCaseScenario.targetPriceCedearArs,

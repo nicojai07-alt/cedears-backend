@@ -89,6 +89,8 @@ export class ValuationEngine {
 
     return {
       ticker: company.id,
+      companyName: company.name,
+      sector: company.sector,
       underlyingTicker: company.underlyingTicker,
       analysisDate: new Date().toISOString(),
       currentPriceUnderlyingUsd: company.currentPriceUnderlyingUsd,

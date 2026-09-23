@@ -1,6 +1,7 @@
 import express, { Express, Request, Response } from 'express';
 import cors from 'cors';
 import swaggerUi from 'swagger-ui-express';
+import { join } from 'path';
 import { openApiDocument } from './swagger/openapi.data.js';
 
 // Ports & Adapters (Infrastructure)
@@ -39,6 +40,13 @@ export function createApp(): {
   app.use(cors());
   app.use(express.json({ limit: '10mb' }));
   app.use(express.urlencoded({ extended: true }));
+
+  // Archivos estáticos del Dashboard Visual
+  const publicDir = join(process.cwd(), 'public');
+  app.use(express.static(publicDir));
+  app.get('/dashboard', (_req: Request, res: Response) => {
+    res.sendFile(join(publicDir, 'index.html'));
+  });
 
   // Inyección de Dependencias (Hexagonal Ports & Adapters Wiring)
   const companyRepository = new InMemoryCompanyRepository();
