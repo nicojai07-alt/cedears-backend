@@ -807,9 +807,9 @@ function updatePriceComparisonChart() {
 
   const labels = sample.map(p => p.ticker);
 
-  const dataCurrent = sample.map(p => isArs ? p.currentPriceCedearArs : p.currentPriceUnderlyingUsd);
-  const dataReal = sample.map(p => isArs ? p.realSustainableBaseCaseScenario.targetPriceCedearArs : p.realSustainableBaseCaseScenario.targetPriceUnderlyingUsd);
-  const dataIdeal = sample.map(p => isArs ? p.idealBestCaseScenario.targetPriceCedearArs : p.idealBestCaseScenario.targetPriceUnderlyingUsd);
+  const dataCurrent = sample.map(p => isArs ? Math.round(p.currentPriceCedearArs) : Number(p.currentPriceUnderlyingUsd.toFixed(2)));
+  const dataReal = sample.map(p => isArs ? Math.round(p.realSustainableBaseCaseScenario.targetPriceCedearArs) : Number(p.realSustainableBaseCaseScenario.targetPriceUnderlyingUsd.toFixed(2)));
+  const dataIdeal = sample.map(p => isArs ? Math.round(p.idealBestCaseScenario.targetPriceCedearArs) : Number(p.idealBestCaseScenario.targetPriceUnderlyingUsd.toFixed(2)));
 
   if (chartPriceComparison) {
     chartPriceComparison.destroy();
@@ -860,9 +860,9 @@ function updatePriceComparisonChart() {
             if (val === undefined || val === null || isNaN(val)) return;
             const text = isArs
               ? `$${Math.round(val).toLocaleString('es-AR')}`
-              : `USD ${Math.round(val).toLocaleString('es-AR')}`;
+              : `USD ${Number(val).toFixed(2)}`;
             c.fillStyle = datasetIdx === 0 ? '#cbd5e1' : (datasetIdx === 1 ? '#34d399' : '#c084fc');
-            c.fillText(text, bar.x, bar.y - 3);
+            c.fillText(text, bar.x, bar.y - 5);
           });
         });
         c.restore();
@@ -872,15 +872,23 @@ function updatePriceComparisonChart() {
       responsive: true,
       maintainAspectRatio: false,
       layout: {
-        padding: { top: 22 }
+        padding: { top: 28, right: 18, bottom: 8, left: 12 }
       },
       plugins: {
         legend: {
-          labels: { color: '#94a3b8', font: { family: 'Inter', size: 11 } }
+          labels: {
+            padding: 16,
+            boxWidth: 12,
+            color: '#94a3b8',
+            font: { family: 'Inter', size: 11 }
+          }
         },
         tooltip: {
           callbacks: {
-            label: (ctx) => `${ctx.dataset.label}: ${isArs ? '$' : 'USD '}${ctx.raw.toLocaleString('es-AR')}`
+            label: (ctx) => {
+              const val = Number(ctx.raw);
+              return `${ctx.dataset.label}: ${isArs ? '$' : 'USD '}${isArs ? Math.round(val).toLocaleString('es-AR') : val.toFixed(2)}`;
+            }
           }
         }
       },
@@ -890,10 +898,10 @@ function updatePriceComparisonChart() {
           grid: { color: 'rgba(255, 255, 255, 0.05)' }
         },
         y: {
-          grace: '15%',
+          grace: '18%',
           ticks: {
             color: '#94a3b8',
-            callback: (v) => `${isArs ? '$' : 'USD '}${v.toLocaleString('es-AR')}`
+            callback: (v) => `${isArs ? '$' : 'USD '}${isArs ? Math.round(v).toLocaleString('es-AR') : Number(v).toFixed(1)}`
           },
           grid: { color: 'rgba(255, 255, 255, 0.05)' }
         }
@@ -908,17 +916,27 @@ function updateTimelineChart() {
   const pred = allPredictions.find(p => p.ticker === selectedTicker);
   if (!pred) return;
 
-  const horizon = parseInt(filterHorizonEl.value, 10) || 5;
   const isReal = currentMode === 'REAL';
 
-  const realTimeline = pred.realSustainableBaseCaseScenario.timeline.slice(0, horizon);
-  const idealTimeline = pred.idealBestCaseScenario.timeline.slice(0, horizon);
+  // Asegurar siempre los 5 puntos completos de la proyección (Año 1 a Año 5)
+  const realTimeline = (pred.realSustainableBaseCaseScenario.timeline || []).slice(0, 5);
+  const idealTimeline = (pred.idealBestCaseScenario.timeline || []).slice(0, 5);
 
-  const labels = realTimeline.map(t => `Año ${t.year}`);
-  const dataRealFcf = realTimeline.map(t => Math.round(t.projectedFreeCashFlow / 1_000_000));
-  const dataIdealFcf = idealTimeline.map(t => Math.round(t.projectedFreeCashFlow / 1_000_000));
+  let labels = ['Año 1', 'Año 2', 'Año 3', 'Año 4', 'Año 5'];
+  let dataRealFcf = realTimeline.map(t => Math.round(t.projectedFreeCashFlow / 1_000_000));
+  let dataIdealFcf = idealTimeline.map(t => Math.round(t.projectedFreeCashFlow / 1_000_000));
 
-  document.getElementById('lineChartSubtext').textContent = `Trayectoria de ${horizon} año(s) para ${pred.ticker} (${pred.companyName || ''}) • Valores en USD Millones`;
+  // Si por alguna razón hubiese menos de 5 puntos, proyectar matemáticamente los 5 años continuos
+  if (dataRealFcf.length < 5 && dataRealFcf.length > 0) {
+    const baseValReal = dataRealFcf[0];
+    const baseValIdeal = dataIdealFcf[0] || baseValReal;
+    const gReal = pred.realSustainableBaseCaseScenario.projectedAnnualGrowthRate || 0.08;
+    const gIdeal = pred.idealBestCaseScenario.projectedAnnualGrowthRate || 0.12;
+    dataRealFcf = [1, 2, 3, 4, 5].map(yr => Math.round(baseValReal * Math.pow(1 + gReal, yr - 1)));
+    dataIdealFcf = [1, 2, 3, 4, 5].map(yr => Math.round(baseValIdeal * Math.pow(1 + gIdeal, yr - 1)));
+  }
+
+  document.getElementById('lineChartSubtext').textContent = `Trayectoria Continua a 5 Años para ${pred.ticker} (${pred.companyName || ''}) • Valores en USD Millones`;
 
   if (chartTimeline) {
     chartTimeline.destroy();
@@ -935,10 +953,14 @@ function updateTimelineChart() {
           borderColor: '#10b981',
           backgroundColor: isReal ? 'rgba(16, 185, 129, 0.15)' : 'rgba(16, 185, 129, 0.03)',
           fill: true,
-          tension: 0.35,
-          borderWidth: isReal ? 3 : 1.5,
+          tension: 0.3,
+          borderWidth: isReal ? 3 : 2,
           pointBackgroundColor: '#10b981',
-          pointRadius: isReal ? 6 : 4
+          pointBorderColor: '#ffffff',
+          pointBorderWidth: 2,
+          pointRadius: isReal ? 6 : 4,
+          pointHoverRadius: 8,
+          spanGaps: true
         },
         {
           label: 'FCF Proyectado Ideal (Millones USD)',
@@ -946,10 +968,14 @@ function updateTimelineChart() {
           borderColor: '#a855f7',
           backgroundColor: !isReal ? 'rgba(168, 85, 247, 0.15)' : 'rgba(168, 85, 247, 0.03)',
           fill: true,
-          tension: 0.35,
-          borderWidth: !isReal ? 3 : 1.5,
+          tension: 0.3,
+          borderWidth: !isReal ? 3 : 2,
           pointBackgroundColor: '#a855f7',
-          pointRadius: !isReal ? 6 : 4
+          pointBorderColor: '#ffffff',
+          pointBorderWidth: 2,
+          pointRadius: !isReal ? 6 : 4,
+          pointHoverRadius: 8,
+          spanGaps: true
         }
       ]
     },
@@ -959,18 +985,53 @@ function updateTimelineChart() {
         const { ctx: c } = chart;
         c.save();
         c.font = 'bold 10px Inter, -apple-system, sans-serif';
-        c.textAlign = 'center';
-        c.textBaseline = 'bottom';
+
         chart.data.datasets.forEach((dataset, datasetIdx) => {
           const meta = chart.getDatasetMeta(datasetIdx);
           if (meta.hidden) return;
           meta.data.forEach((point, index) => {
             const val = dataset.data[index];
             if (val === undefined || val === null || isNaN(val)) return;
-            const text = `USD ${val}M`;
+
+            const text = `USD ${Math.round(val).toLocaleString('es-AR')}M`;
+
+            // Alineación horizontal: primer punto a la izquierda, último a la derecha, medio centrado
+            let align = 'center';
+            if (index === 0) align = 'left';
+            else if (index === meta.data.length - 1) align = 'right';
+
+            // Desplazamiento vertical inteligente para evitar solapamiento entre curvas
+            const realVal = dataRealFcf[index] ?? 0;
+            const idealVal = dataIdealFcf[index] ?? 0;
+            const isIdealHigher = idealVal >= realVal;
+
+            let yPos = point.y - 12; // por defecto arriba
+            if (datasetIdx === 0) {
+              // Real: si Ideal es más alto, colocar Real abajo; sino arriba
+              yPos = isIdealHigher ? point.y + 16 : point.y - 12;
+            } else {
+              // Ideal: si Ideal es más alto, colocar Ideal arriba; sino abajo
+              yPos = isIdealHigher ? point.y - 12 : point.y + 16;
+            }
+
+            // Dibujar pastilla de fondo sutil para evitar solapamiento con la línea
+            c.textAlign = align;
+            c.textBaseline = 'middle';
+            const metrics = c.measureText(text);
+            const padX = 4;
+            const padY = 2;
+            const boxW = metrics.width + padX * 2;
+            const boxH = 14;
+            let boxX = point.x - boxW / 2;
+            if (align === 'left') boxX = point.x - 2;
+            if (align === 'right') boxX = point.x - boxW + 2;
+            const boxY = yPos - boxH / 2;
+
+            c.fillStyle = 'rgba(15, 23, 42, 0.85)';
+            c.fillRect(boxX, boxY, boxW, boxH);
+
             c.fillStyle = datasetIdx === 0 ? '#34d399' : '#c084fc';
-            const yOffset = datasetIdx === 0 ? -7 : -18;
-            c.fillText(text, point.x, point.y + yOffset);
+            c.fillText(text, point.x, yPos);
           });
         });
         c.restore();
@@ -980,28 +1041,33 @@ function updateTimelineChart() {
       responsive: true,
       maintainAspectRatio: false,
       layout: {
-        padding: { top: 24 }
+        padding: { top: 32, right: 35, bottom: 12, left: 16 }
       },
       plugins: {
         legend: {
-          labels: { color: '#94a3b8', font: { family: 'Inter', size: 11 } }
+          labels: {
+            padding: 18,
+            boxWidth: 14,
+            color: '#94a3b8',
+            font: { family: 'Inter', size: 11 }
+          }
         },
         tooltip: {
           callbacks: {
-            label: (ctx) => `${ctx.dataset.label}: USD ${ctx.raw.toLocaleString('es-AR')}M`
+            label: (ctx) => `${ctx.dataset.label}: USD ${Number(ctx.raw).toFixed(1)}M`
           }
         }
       },
       scales: {
         x: {
-          ticks: { color: '#cbd5e1' },
+          ticks: { color: '#cbd5e1', font: { family: 'Inter', weight: 'bold' } },
           grid: { color: 'rgba(255, 255, 255, 0.05)' }
         },
         y: {
-          grace: '18%',
+          grace: '25%',
           ticks: {
             color: '#94a3b8',
-            callback: (v) => `USD ${v.toLocaleString('es-AR')}M`
+            callback: (v) => `USD ${Math.round(v).toLocaleString('es-AR')}M`
           },
           grid: { color: 'rgba(255, 255, 255, 0.05)' }
         }
@@ -1025,11 +1091,12 @@ function updateScatterChart() {
     else color = '#ef4444';
 
     const isSelected = p.ticker === selectedTicker;
-    const upside = isReal ? p.realSustainableBaseCaseScenario.upsidePotentialPercentage : p.idealBestCaseScenario.upsidePotentialPercentage;
+    const rawUpside = isReal ? p.realSustainableBaseCaseScenario.upsidePotentialPercentage : p.idealBestCaseScenario.upsidePotentialPercentage;
+    const rawRisk = p.realSustainableBaseCaseScenario.appliedRiskDiscountPercentage;
 
     return {
-      x: p.realSustainableBaseCaseScenario.appliedRiskDiscountPercentage,
-      y: upside,
+      x: Number(rawRisk.toFixed(1)),
+      y: Number(rawUpside.toFixed(1)),
       ticker: p.ticker,
       name: p.companyName || p.ticker,
       recommendation: p.recommendation,
@@ -1073,12 +1140,18 @@ function updateScatterChart() {
             c.setLineDash([4, 4]);
             c.stroke();
 
-            // Etiqueta distintiva directa
+            // Etiqueta distintiva directa con fondo para evitar solapamientos
+            const text = ` ★ ${item.ticker}`;
             c.font = 'bold 12px Inter, sans-serif';
-            c.fillStyle = '#ffffff';
             c.textAlign = 'left';
             c.textBaseline = 'middle';
-            c.fillText(` ★ ${item.ticker}`, point.x + 14, point.y);
+
+            const metrics = c.measureText(text);
+            c.fillStyle = 'rgba(15, 23, 42, 0.85)';
+            c.fillRect(point.x + 13, point.y - 8, metrics.width + 4, 16);
+
+            c.fillStyle = '#ffffff';
+            c.fillText(text, point.x + 14, point.y);
             c.restore();
           }
         });
@@ -1088,7 +1161,7 @@ function updateScatterChart() {
       responsive: true,
       maintainAspectRatio: false,
       layout: {
-        padding: { top: 15, right: 35 }
+        padding: { top: 20, right: 45, bottom: 12, left: 16 }
       },
       plugins: {
         legend: { display: false },
@@ -1096,7 +1169,9 @@ function updateScatterChart() {
           callbacks: {
             label: (ctx) => {
               const d = ctx.raw;
-              return `${d.ticker} (${d.name}) | ${isReal ? 'Upside Real' : 'Upside Ideal'}: ${d.y.toFixed(1)}% | Riesgo: ${d.x.toFixed(1)}% [${d.recommendation}]`;
+              const xVal = Number(d.x).toFixed(1);
+              const yVal = Number(d.y).toFixed(1);
+              return `${d.ticker} (${d.name}) | ${isReal ? 'Upside Real' : 'Upside Ideal'}: ${yVal}% | Riesgo: ${xVal}% [${d.recommendation}]`;
             }
           }
         }
@@ -1111,12 +1186,12 @@ function updateScatterChart() {
           },
           ticks: {
             color: '#94a3b8',
-            callback: (v) => `${v}%`
+            callback: (v) => `${Number(v).toFixed(1)}%`
           },
           grid: { color: 'rgba(255, 255, 255, 0.05)' }
         },
         y: {
-          grace: '10%',
+          grace: '15%',
           title: {
             display: true,
             text: isReal ? 'Potencial de Suba Real Sostenible (%)' : 'Potencial Máximo Ideal (%)',
@@ -1125,7 +1200,7 @@ function updateScatterChart() {
           },
           ticks: {
             color: '#94a3b8',
-            callback: (v) => `${v}%`
+            callback: (v) => `${Number(v).toFixed(1)}%`
           },
           grid: { color: 'rgba(255, 255, 255, 0.05)' }
         }
