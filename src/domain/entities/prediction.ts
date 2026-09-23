@@ -23,6 +23,18 @@ export interface ValuationScenario {
   timeline: ProjectionTimeline[];
 }
 
+export interface FinancialInputsSummary {
+  revenueUsd: number;
+  ebitdaUsd: number;
+  netIncomeUsd: number;
+  freeCashFlowUsd: number;
+  netDebtUsd: number;
+  operatingMargin: number;
+  perCurrent: number;
+  industry?: string;
+  country?: string;
+}
+
 export interface PredictionResult {
   ticker: string;
   companyName?: string;
@@ -41,4 +53,5 @@ export interface PredictionResult {
   spreadBetweenScenariosPercentage: number; // Brecha de incertidumbre entre escenario ideal y real
   recommendation: 'STRONG_BUY' | 'BUY' | 'HOLD' | 'SELL' | 'STRONG_SELL';
   synthesisNarrative: string;
+  financialInputs?: FinancialInputsSummary;
 }

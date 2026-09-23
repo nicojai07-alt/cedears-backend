@@ -21,7 +21,11 @@ const btnModeRealEl = document.getElementById('btnModeReal');
 const btnModeIdealEl = document.getElementById('btnModeIdeal');
 const activeModeBadgeEl = document.getElementById('activeModeBadge');
 
+const searchPredictiveContainerEl = document.getElementById('searchPredictiveContainer');
 const filterSearchEl = document.getElementById('filterSearch');
+const btnClearSearchEl = document.getElementById('btnClearSearch');
+const searchSuggestionsDropdownEl = document.getElementById('searchSuggestionsDropdown');
+
 const filterSectorEl = document.getElementById('filterSector');
 const filterRecommendationEl = document.getElementById('filterRecommendation');
 const filterHorizonEl = document.getElementById('filterHorizon');
@@ -38,6 +42,14 @@ const btnCurrencyArsEl = document.getElementById('btnCurrencyArs');
 const btnCurrencyUsdEl = document.getElementById('btnCurrencyUsd');
 const btnScopeSelectedEl = document.getElementById('btnScopeSelected');
 const btnScopeTopEl = document.getElementById('btnScopeTop');
+
+// Catalog Modal Elements
+const catalogModalEl = document.getElementById('catalogModal');
+const btnQuickCatalogEl = document.getElementById('btnQuickCatalog');
+const btnCloseCatalogModalEl = document.getElementById('btnCloseCatalogModal');
+const btnCloseCatalogBtnEl = document.getElementById('btnCloseCatalogBtn');
+const catalogSearchInputEl = document.getElementById('catalogSearchInput');
+const catalogGridEl = document.getElementById('catalogGrid');
 
 // AI Modal Elements
 const aiModalEl = document.getElementById('aiModal');
@@ -57,6 +69,16 @@ function normalizeText(str) {
     .trim();
 }
 
+function formatUsdAmount(amount) {
+  if (amount === undefined || amount === null || isNaN(amount)) return 'N/A';
+  const abs = Math.abs(amount);
+  const sign = amount < 0 ? '-' : '';
+  if (abs >= 1_000_000_000) {
+    return `${sign}USD ${(abs / 1_000_000_000).toFixed(1)}B`;
+  }
+  return `${sign}USD ${Math.round(abs / 1_000_000).toLocaleString('es-AR')}M`;
+}
+
 // ==========================================================================
 // Initialization
 // ==========================================================================
@@ -71,8 +93,28 @@ function setupEventListeners() {
   btnModeRealEl.addEventListener('click', () => setGlobalMode('REAL'));
   btnModeIdealEl.addEventListener('click', () => setGlobalMode('IDEAL'));
 
+  // Buscador Predictivo Inteligente
+  filterSearchEl.addEventListener('input', handlePredictiveSearchInput);
+  filterSearchEl.addEventListener('focus', () => {
+    if (filterSearchEl.value.trim().length > 0) {
+      handlePredictiveSearchInput();
+    }
+  });
+  btnClearSearchEl.addEventListener('click', () => {
+    filterSearchEl.value = '';
+    btnClearSearchEl.style.display = 'none';
+    searchSuggestionsDropdownEl.style.display = 'none';
+    applyFilters();
+  });
+
+  // Cerrar sugerencias al hacer clic afuera
+  document.addEventListener('click', (e) => {
+    if (searchPredictiveContainerEl && !searchPredictiveContainerEl.contains(e.target)) {
+      searchSuggestionsDropdownEl.style.display = 'none';
+    }
+  });
+
   // Filtros
-  filterSearchEl.addEventListener('input', applyFilters);
   filterSectorEl.addEventListener('change', applyFilters);
   filterRecommendationEl.addEventListener('change', applyFilters);
   filterHorizonEl.addEventListener('change', () => updateTimelineChart());
@@ -103,6 +145,25 @@ function setupEventListeners() {
       sortTable(field);
     });
   });
+
+  // Modal Catálogo de los 50 CEDEARs
+  if (btnQuickCatalogEl) {
+    btnQuickCatalogEl.addEventListener('click', openCatalogModal);
+  }
+  if (btnCloseCatalogModalEl) {
+    btnCloseCatalogModalEl.addEventListener('click', closeCatalogModal);
+  }
+  if (btnCloseCatalogBtnEl) {
+    btnCloseCatalogBtnEl.addEventListener('click', closeCatalogModal);
+  }
+  if (catalogModalEl) {
+    catalogModalEl.addEventListener('click', (e) => {
+      if (e.target === catalogModalEl) closeCatalogModal();
+    });
+  }
+  if (catalogSearchInputEl) {
+    catalogSearchInputEl.addEventListener('input', handleCatalogSearch);
+  }
 
   // Modal de IA (opcional)
   btnOpenAiModalEl.addEventListener('click', () => {
@@ -347,6 +408,39 @@ function selectTicker(ticker) {
   document.getElementById('focusNarrative').textContent = pred.synthesisNarrative;
   document.getElementById('lineChartTickerBadge').textContent = pred.ticker;
 
+  // 4. TRANSPARENCIA TOTAL: FUNDAMENTOS FINANCIEROS (INPUTS DEL ALGORITMO)
+  const fundNameEl = document.getElementById('fundTickerName');
+  if (fundNameEl) fundNameEl.textContent = `${pred.ticker} (${pred.companyName || pred.underlyingTicker})`;
+
+  const inputs = pred.financialInputs;
+  if (inputs) {
+    const revEl = document.getElementById('fundRevenue');
+    if (revEl) revEl.textContent = formatUsdAmount(inputs.revenueUsd);
+
+    const ebitdaEl = document.getElementById('fundEbitda');
+    if (ebitdaEl) ebitdaEl.textContent = formatUsdAmount(inputs.ebitdaUsd);
+
+    const fcfEl = document.getElementById('fundFcf');
+    if (fcfEl) fcfEl.textContent = formatUsdAmount(inputs.freeCashFlowUsd);
+
+    const netDebtEl = document.getElementById('fundNetDebt');
+    if (netDebtEl) netDebtEl.textContent = formatUsdAmount(inputs.netDebtUsd);
+
+    const marginEl = document.getElementById('fundOperatingMargin');
+    if (marginEl) marginEl.textContent = `${(inputs.operatingMargin * 100).toFixed(2)}%`;
+
+    const perEl = document.getElementById('fundPer');
+    if (perEl) perEl.textContent = inputs.perCurrent ? `${inputs.perCurrent.toFixed(1)}x` : 'N/A';
+
+    const indEl = document.getElementById('fundIndustryCountry');
+    if (indEl) indEl.textContent = `${inputs.industry || pred.sector} • ${inputs.country || 'USA'}`;
+  }
+
+  const waccCompEl = document.getElementById('fundWaccComparison');
+  if (waccCompEl) {
+    waccCompEl.textContent = `${(ideal.wacc * 100).toFixed(2)}% ➔ ${(real.wacc * 100).toFixed(2)}%`;
+  }
+
   // Actualizar fila activa en la tabla
   document.querySelectorAll('#screenerTableBody tr').forEach(tr => {
     if (tr.dataset.ticker === ticker) {
@@ -356,9 +450,143 @@ function selectTicker(ticker) {
     }
   });
 
-  // Actualizar gráficos
+  // Actualizar gráficos (los 3 gráficos en tiempo real)
   updatePriceComparisonChart();
   updateTimelineChart();
+  updateScatterChart();
+}
+
+// ==========================================================================
+// Predictive Search & Autocomplete
+// ==========================================================================
+function handlePredictiveSearchInput() {
+  const query = filterSearchEl.value.trim();
+  btnClearSearchEl.style.display = query ? 'block' : 'none';
+
+  if (!query) {
+    searchSuggestionsDropdownEl.style.display = 'none';
+    searchSuggestionsDropdownEl.innerHTML = '';
+    applyFilters();
+    return;
+  }
+
+  const normQuery = normalizeText(query);
+  const matches = allPredictions.filter(p => {
+    return normalizeText(p.ticker).includes(normQuery) ||
+           normalizeText(p.companyName).includes(normQuery) ||
+           normalizeText(p.underlyingTicker).includes(normQuery);
+  }).slice(0, 8); // Top 8 coincidencias instantáneas
+
+  renderSearchSuggestions(matches, query);
+  applyFilters();
+}
+
+function renderSearchSuggestions(matches, query) {
+  searchSuggestionsDropdownEl.innerHTML = '';
+
+  if (matches.length === 0) {
+    searchSuggestionsDropdownEl.innerHTML = `<div class="autocomplete-empty">Sin resultados para "${query}"</div>`;
+    searchSuggestionsDropdownEl.style.display = 'block';
+    return;
+  }
+
+  const isArs = currencyMode === 'ARS';
+
+  matches.forEach(p => {
+    const item = document.createElement('div');
+    item.className = 'autocomplete-item';
+    const priceText = isArs
+      ? `$${p.currentPriceCedearArs.toLocaleString('es-AR')} ARS`
+      : `USD ${p.currentPriceUnderlyingUsd.toFixed(2)}`;
+
+    item.innerHTML = `
+      <div class="autocomplete-item-left">
+        <span class="autocomplete-ticker">${p.ticker}</span>
+        <span class="autocomplete-name">${p.companyName || p.underlyingTicker}</span>
+      </div>
+      <div class="autocomplete-item-right">
+        <span class="badge ${getRecommendationBadgeClass(p.recommendation)}">${p.recommendation.replace('_', ' ')}</span>
+        <span class="autocomplete-price">${priceText}</span>
+      </div>
+    `;
+
+    item.addEventListener('click', () => {
+      searchSuggestionsDropdownEl.style.display = 'none';
+      selectTicker(p.ticker);
+      const focusCard = document.querySelector('.ticker-focus-card');
+      if (focusCard) {
+        window.scrollTo({ top: focusCard.offsetTop - 70, behavior: 'smooth' });
+      }
+    });
+
+    searchSuggestionsDropdownEl.appendChild(item);
+  });
+
+  searchSuggestionsDropdownEl.style.display = 'block';
+}
+
+// ==========================================================================
+// Catalog Modal (50 CEDEARs BYMA)
+// ==========================================================================
+function openCatalogModal() {
+  if (catalogSearchInputEl) catalogSearchInputEl.value = '';
+  renderCatalogGrid(allPredictions);
+  if (catalogModalEl) catalogModalEl.classList.add('active');
+}
+
+function closeCatalogModal() {
+  if (catalogModalEl) catalogModalEl.classList.remove('active');
+}
+
+function handleCatalogSearch() {
+  const query = normalizeText(catalogSearchInputEl.value);
+  const filtered = allPredictions.filter(p => {
+    return !query ||
+           normalizeText(p.ticker).includes(query) ||
+           normalizeText(p.companyName).includes(query) ||
+           normalizeText(p.underlyingTicker).includes(query) ||
+           normalizeText(p.sector).includes(query);
+  });
+  renderCatalogGrid(filtered);
+}
+
+function renderCatalogGrid(items) {
+  if (!catalogGridEl) return;
+  catalogGridEl.innerHTML = '';
+
+  const sorted = [...items].sort((a, b) => a.ticker.localeCompare(b.ticker));
+
+  if (sorted.length === 0) {
+    catalogGridEl.innerHTML = '<div class="autocomplete-empty" style="grid-column: 1 / -1; padding: 2rem;">No se encontraron CEDEARs en el catálogo</div>';
+    return;
+  }
+
+  sorted.forEach(p => {
+    const card = document.createElement('div');
+    card.className = 'catalog-card-item';
+    card.innerHTML = `
+      <div class="catalog-card-header">
+        <span class="catalog-card-ticker">${p.ticker}</span>
+        <span class="catalog-card-underlying">${p.underlyingTicker}</span>
+      </div>
+      <div class="catalog-card-name" title="${p.companyName}">${p.companyName || p.underlyingTicker}</div>
+      <div class="catalog-card-footer">
+        <span class="catalog-card-ratio">Ratio ${p.cedearRatio.cedearShares}:${p.cedearRatio.underlyingShares}</span>
+        <span class="badge ${getRecommendationBadgeClass(p.recommendation)}">${p.recommendation.replace('_', ' ')}</span>
+      </div>
+    `;
+
+    card.addEventListener('click', () => {
+      closeCatalogModal();
+      selectTicker(p.ticker);
+      const focusCard = document.querySelector('.ticker-focus-card');
+      if (focusCard) {
+        window.scrollTo({ top: focusCard.offsetTop - 70, behavior: 'smooth' });
+      }
+    });
+
+    catalogGridEl.appendChild(card);
+  });
 }
 
 // ==========================================================================
@@ -570,11 +798,11 @@ function updatePriceComparisonChart() {
     const current = allPredictions.find(p => p.ticker === selectedTicker);
     sample = current ? [current] : [];
     document.getElementById('priceChartTitle').textContent = `Comparativa de Precios: ${selectedTicker} (${isArs ? 'ARS' : 'USD'})`;
-    document.getElementById('priceChartSubtext').textContent = 'Precio Actual vs. Precio Objetivo Real e Ideal';
+    document.getElementById('priceChartSubtext').textContent = 'Precio Actual vs. Precio Objetivo Real e Ideal (Etiquetas directas)';
   } else {
     sample = filteredPredictions.slice(0, 8);
     document.getElementById('priceChartTitle').textContent = `Comparativa Top 8 CEDEARs (${isArs ? 'ARS' : 'USD'})`;
-    document.getElementById('priceChartSubtext').textContent = 'Evaluación simultánea de los activos filtrados';
+    document.getElementById('priceChartSubtext').textContent = 'Evaluación simultánea de los activos filtrados con valores directos';
   }
 
   const labels = sample.map(p => p.ticker);
@@ -616,9 +844,36 @@ function updatePriceComparisonChart() {
         }
       ]
     },
+    plugins: [{
+      id: 'barValueLabels',
+      afterDatasetsDraw(chart) {
+        const { ctx: c } = chart;
+        c.save();
+        c.font = 'bold 10px Inter, -apple-system, sans-serif';
+        c.textAlign = 'center';
+        c.textBaseline = 'bottom';
+        chart.data.datasets.forEach((dataset, datasetIdx) => {
+          const meta = chart.getDatasetMeta(datasetIdx);
+          if (meta.hidden) return;
+          meta.data.forEach((bar, index) => {
+            const val = dataset.data[index];
+            if (val === undefined || val === null || isNaN(val)) return;
+            const text = isArs
+              ? `$${Math.round(val).toLocaleString('es-AR')}`
+              : `USD ${Math.round(val).toLocaleString('es-AR')}`;
+            c.fillStyle = datasetIdx === 0 ? '#cbd5e1' : (datasetIdx === 1 ? '#34d399' : '#c084fc');
+            c.fillText(text, bar.x, bar.y - 3);
+          });
+        });
+        c.restore();
+      }
+    }],
     options: {
       responsive: true,
       maintainAspectRatio: false,
+      layout: {
+        padding: { top: 22 }
+      },
       plugins: {
         legend: {
           labels: { color: '#94a3b8', font: { family: 'Inter', size: 11 } }
@@ -635,6 +890,7 @@ function updatePriceComparisonChart() {
           grid: { color: 'rgba(255, 255, 255, 0.05)' }
         },
         y: {
+          grace: '15%',
           ticks: {
             color: '#94a3b8',
             callback: (v) => `${isArs ? '$' : 'USD '}${v.toLocaleString('es-AR')}`
@@ -662,7 +918,7 @@ function updateTimelineChart() {
   const dataRealFcf = realTimeline.map(t => Math.round(t.projectedFreeCashFlow / 1_000_000));
   const dataIdealFcf = idealTimeline.map(t => Math.round(t.projectedFreeCashFlow / 1_000_000));
 
-  document.getElementById('lineChartSubtext').textContent = `Trayectoria de ${horizon} año(s) para ${pred.ticker} (${pred.companyName || ''})`;
+  document.getElementById('lineChartSubtext').textContent = `Trayectoria de ${horizon} año(s) para ${pred.ticker} (${pred.companyName || ''}) • Valores en USD Millones`;
 
   if (chartTimeline) {
     chartTimeline.destroy();
@@ -682,7 +938,7 @@ function updateTimelineChart() {
           tension: 0.35,
           borderWidth: isReal ? 3 : 1.5,
           pointBackgroundColor: '#10b981',
-          pointRadius: isReal ? 5 : 3
+          pointRadius: isReal ? 6 : 4
         },
         {
           label: 'FCF Proyectado Ideal (Millones USD)',
@@ -693,13 +949,39 @@ function updateTimelineChart() {
           tension: 0.35,
           borderWidth: !isReal ? 3 : 1.5,
           pointBackgroundColor: '#a855f7',
-          pointRadius: !isReal ? 5 : 3
+          pointRadius: !isReal ? 6 : 4
         }
       ]
     },
+    plugins: [{
+      id: 'timelineValueLabels',
+      afterDatasetsDraw(chart) {
+        const { ctx: c } = chart;
+        c.save();
+        c.font = 'bold 10px Inter, -apple-system, sans-serif';
+        c.textAlign = 'center';
+        c.textBaseline = 'bottom';
+        chart.data.datasets.forEach((dataset, datasetIdx) => {
+          const meta = chart.getDatasetMeta(datasetIdx);
+          if (meta.hidden) return;
+          meta.data.forEach((point, index) => {
+            const val = dataset.data[index];
+            if (val === undefined || val === null || isNaN(val)) return;
+            const text = `USD ${val}M`;
+            c.fillStyle = datasetIdx === 0 ? '#34d399' : '#c084fc';
+            const yOffset = datasetIdx === 0 ? -7 : -18;
+            c.fillText(text, point.x, point.y + yOffset);
+          });
+        });
+        c.restore();
+      }
+    }],
     options: {
       responsive: true,
       maintainAspectRatio: false,
+      layout: {
+        padding: { top: 24 }
+      },
       plugins: {
         legend: {
           labels: { color: '#94a3b8', font: { family: 'Inter', size: 11 } }
@@ -716,6 +998,7 @@ function updateTimelineChart() {
           grid: { color: 'rgba(255, 255, 255, 0.05)' }
         },
         y: {
+          grace: '18%',
           ticks: {
             color: '#94a3b8',
             callback: (v) => `USD ${v.toLocaleString('es-AR')}M`
@@ -741,6 +1024,7 @@ function updateScatterChart() {
     else if (p.recommendation === 'HOLD') color = '#fbbf24';
     else color = '#ef4444';
 
+    const isSelected = p.ticker === selectedTicker;
     const upside = isReal ? p.realSustainableBaseCaseScenario.upsidePotentialPercentage : p.idealBestCaseScenario.upsidePotentialPercentage;
 
     return {
@@ -749,7 +1033,8 @@ function updateScatterChart() {
       ticker: p.ticker,
       name: p.companyName || p.ticker,
       recommendation: p.recommendation,
-      color
+      color: isSelected ? '#38bdf8' : color,
+      isSelected
     };
   });
 
@@ -764,15 +1049,47 @@ function updateScatterChart() {
         label: 'CEDEARs',
         data: scatterData,
         pointBackgroundColor: scatterData.map(d => d.color),
-        pointBorderColor: '#ffffff',
-        pointBorderWidth: 1.5,
-        pointRadius: 6,
-        pointHoverRadius: 9
+        pointBorderColor: scatterData.map(d => d.isSelected ? '#ffffff' : 'rgba(255, 255, 255, 0.7)'),
+        pointBorderWidth: scatterData.map(d => d.isSelected ? 3 : 1.5),
+        pointRadius: scatterData.map(d => d.isSelected ? 11 : 5.5),
+        pointHoverRadius: scatterData.map(d => d.isSelected ? 14 : 8)
       }]
     },
+    plugins: [{
+      id: 'scatterSelectedCallout',
+      afterDatasetsDraw(chart) {
+        const { ctx: c } = chart;
+        const meta = chart.getDatasetMeta(0);
+        if (!meta || meta.hidden) return;
+        meta.data.forEach((point, index) => {
+          const item = scatterData[index];
+          if (item && item.isSelected) {
+            c.save();
+            // Halo de selección circular punteado
+            c.beginPath();
+            c.arc(point.x, point.y, 17, 0, Math.PI * 2);
+            c.strokeStyle = '#38bdf8';
+            c.lineWidth = 2;
+            c.setLineDash([4, 4]);
+            c.stroke();
+
+            // Etiqueta distintiva directa
+            c.font = 'bold 12px Inter, sans-serif';
+            c.fillStyle = '#ffffff';
+            c.textAlign = 'left';
+            c.textBaseline = 'middle';
+            c.fillText(` ★ ${item.ticker}`, point.x + 14, point.y);
+            c.restore();
+          }
+        });
+      }
+    }],
     options: {
       responsive: true,
       maintainAspectRatio: false,
+      layout: {
+        padding: { top: 15, right: 35 }
+      },
       plugins: {
         legend: { display: false },
         tooltip: {
@@ -799,6 +1116,7 @@ function updateScatterChart() {
           grid: { color: 'rgba(255, 255, 255, 0.05)' }
         },
         y: {
+          grace: '10%',
           title: {
             display: true,
             text: isReal ? 'Potencial de Suba Real Sostenible (%)' : 'Potencial Máximo Ideal (%)',
@@ -818,7 +1136,10 @@ function updateScatterChart() {
           const point = scatterData[index];
           if (point) {
             selectTicker(point.ticker);
-            window.scrollTo({ top: document.querySelector('.ticker-focus-card').offsetTop - 80, behavior: 'smooth' });
+            const focusCard = document.querySelector('.ticker-focus-card');
+            if (focusCard) {
+              window.scrollTo({ top: focusCard.offsetTop - 70, behavior: 'smooth' });
+            }
           }
         }
       }

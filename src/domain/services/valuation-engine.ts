@@ -101,7 +101,18 @@ export class ValuationEngine {
       realSustainableBaseCaseScenario: realScenario,
       spreadBetweenScenariosPercentage: Number(spread.toFixed(2)),
       recommendation,
-      synthesisNarrative
+      synthesisNarrative,
+      financialInputs: {
+        revenueUsd: latestFinancials.incomeStatement.totalRevenue,
+        ebitdaUsd: latestFinancials.incomeStatement.ebitda,
+        netIncomeUsd: latestFinancials.incomeStatement.netIncome,
+        freeCashFlowUsd: latestFinancials.cashFlow.freeCashFlow,
+        netDebtUsd: latestFinancials.ratios.netDebt,
+        operatingMargin: latestFinancials.ratios.operatingMargin,
+        perCurrent: latestFinancials.ratios.per,
+        industry: company.industry,
+        country: company.country
+      }
     };
   }
 

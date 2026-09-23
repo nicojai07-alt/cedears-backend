@@ -162,3 +162,78 @@ El proyecto cuenta con el archivo de infraestructura como código [`render.yaml`
    - `FINANCIAL_API_KEY`: Clave de Financial Modeling Prep si deseas balances externos en vivo.
 
 El servicio estará disponible en pocos minutos con el Dashboard y Swagger activos.
+
+---
+
+## 7. Catálogo Oficial de los 50 CEDEARs BYMA Monitoreados
+
+El motor de valuación y screener cuenta con **50 CEDEARs reales** de alta negociación y liquidez en BYMA, con precarga en memoria sub-100ms para demostraciones inmediatas y cálculo en tiempo real:
+
+| # | Ticker BYMA | Subyacente | Empresa | Sector Económico | Ratio Oficial |
+| :-: | :--- | :--- | :--- | :--- | :-: |
+| 1 | **AAPL** | NASDAQ: AAPL | Apple Inc. | Technology | 10:1 |
+| 2 | **ABBV** | NYSE: ABBV | AbbVie Inc. | Healthcare | 10:1 |
+| 3 | **ABNB** | NASDAQ: ABNB | Airbnb Inc. | Consumer Cyclical | 15:1 |
+| 4 | **AMD** | NASDAQ: AMD | Advanced Micro Devices Inc. | Technology | 10:1 |
+| 5 | **AMZN** | NASDAQ: AMZN | Amazon.com Inc. | Consumer Cyclical | 144:1 |
+| 6 | **BABA** | NYSE: BABA | Alibaba Group Holding Ltd | Consumer Cyclical | 9:1 |
+| 7 | **BAC** | NYSE: BAC | Bank of America Corporation | Financial | 4:1 |
+| 8 | **BBD** | NYSE: BBD | Banco Bradesco S.A. | Financial | 1:1 |
+| 9 | **BKNG** | NASDAQ: BKNG | Booking Holdings Inc. | Consumer Cyclical | 120:1 |
+| 10 | **BMA** | NYSE: BMA | Banco Macro S.A. | Financial | 10:1 |
+| 11 | **C** | NYSE: C | Citigroup Inc. | Financial | 3:1 |
+| 12 | **COST** | NASDAQ: COST | Costco Wholesale Corporation | Consumer Defensive | 48:1 |
+| 13 | **CRM** | NYSE: CRM | Salesforce Inc. | Technology | 18:1 |
+| 14 | **CSCO** | NASDAQ: CSCO | Cisco Systems Inc. | Technology | 5:1 |
+| 15 | **CVX** | NYSE: CVX | Chevron Corporation | Energy | 8:1 |
+| 16 | **DESP** | NYSE: DESP | Despegar.com Corp. | Consumer Cyclical | 1:1 |
+| 17 | **DIS** | NYSE: DIS | The Walt Disney Company | Communication Services | 12:1 |
+| 18 | **GLOB** | NYSE: GLOB | Globant S.A. | Technology | 18:1 |
+| 19 | **GOLD** | NYSE: GOLD | Barrick Gold Corp | Basic Materials | 1:1 |
+| 20 | **GOOGL** | NASDAQ: GOOGL | Alphabet Inc. | Communication Services | 58:1 |
+| 21 | **INTC** | NASDAQ: INTC | Intel Corporation | Technology | 5:1 |
+| 22 | **JD** | NASDAQ: JD | JD.com Inc. | Consumer Cyclical | 4:1 |
+| 23 | **JNJ** | NYSE: JNJ | Johnson & Johnson | Healthcare | 10:1 |
+| 24 | **JPM** | NYSE: JPM | JPMorgan Chase & Co. | Financial | 15:1 |
+| 25 | **KO** | NYSE: KO | The Coca-Cola Company | Consumer Defensive | 5:1 |
+| 26 | **LLY** | NYSE: LLY | Eli Lilly and Company | Healthcare | 8:1 |
+| 27 | **MA** | NYSE: MA | Mastercard Incorporated | Financial | 33:1 |
+| 28 | **MELI** | NASDAQ: MELI | MercadoLibre Inc. | Consumer Cyclical | 120:1 |
+| 29 | **META** | NASDAQ: META | Meta Platforms Inc. | Communication Services | 24:1 |
+| 30 | **MSFT** | NASDAQ: MSFT | Microsoft Corporation | Technology | 30:1 |
+| 31 | **NFLX** | NASDAQ: NFLX | Netflix Inc. | Communication Services | 48:1 |
+| 32 | **NIO** | NYSE: NIO | NIO Inc. | Consumer Cyclical | 2:1 |
+| 33 | **NVDA** | NASDAQ: NVDA | NVIDIA Corporation | Technology | 24:1 |
+| 34 | **PBR** | NYSE: PBR | Petróleo Brasileiro S.A. Petrobras | Energy | 1:1 |
+| 35 | **PEP** | NASDAQ: PEP | PepsiCo Inc. | Consumer Defensive | 6:1 |
+| 36 | **PG** | NYSE: PG | Procter & Gamble Company | Consumer Defensive | 10:1 |
+| 37 | **PYPL** | NASDAQ: PYPL | PayPal Holdings Inc. | Financial | 10:1 |
+| 38 | **QCOM** | NASDAQ: QCOM | QUALCOMM Incorporated | Technology | 11:1 |
+| 39 | **SPOT** | NYSE: SPOT | Spotify Technology S.A. | Communication Services | 24:1 |
+| 40 | **SQ** | NYSE: SQ | Block Inc. | Technology | 10:1 |
+| 41 | **TSLA** | NASDAQ: TSLA | Tesla Inc. | Consumer Cyclical | 15:1 |
+| 42 | **TXN** | NASDAQ: TXN | Texas Instruments Inc. | Technology | 15:1 |
+| 43 | **UBER** | NYSE: UBER | Uber Technologies Inc. | Technology | 8:1 |
+| 44 | **UNH** | NYSE: UNH | UnitedHealth Group Inc. | Healthcare | 33:1 |
+| 45 | **V** | NYSE: V | Visa Inc. | Financial | 18:1 |
+| 46 | **VALE** | NYSE: VALE | Vale S.A. | Basic Materials | 2:1 |
+| 47 | **VIST** | NYSE: VIST | Vista Energy S.A.B. de C.V. | Energy | 3:1 |
+| 48 | **WFC** | NYSE: WFC | Wells Fargo & Company | Financial | 5:1 |
+| 49 | **WMT** | NYSE: WMT | Walmart Inc. | Consumer Defensive | 6:1 |
+| 50 | **XOM** | NYSE: XOM | Exxon Mobil Corporation | Energy | 10:1 |
+
+---
+
+## 8. Novedades y Mejoras Clave de Experiencia de Usuario (UX)
+
+1. **Buscador Predictivo Instantáneo (Autocomplete)**:
+   - Al tipear una sola letra en el buscador, se despliega de inmediato un menú flotante con las coincidencias encontradas por Ticker o Nombre, mostrando recomendación y precio.
+   - Al seleccionar cualquier sugerencia, el dashboard inspecciona ese CEDEAR en pantalla completa sin recargar la página.
+2. **Visualización Directa de Valores en Gráficos (Sin Adivinar)**:
+   - **Gráfico 1 (Barras)**: Cada barra (Actual, Real Sostenible, Ideal) incluye su valor monetario exacto ($ ARS o USD) impreso directamente sobre la barra.
+   - **Gráfico 2 (Línea FCF)**: Cada nodo temporal año a año tiene su etiqueta de flujo en millones de USD visible sin requerir posar el cursor.
+   - **Gráfico 3 (Matriz de Riesgo vs. Retorno)**: El CEDEAR activo inspeccionado se destaca con un punto de mayor tamaño, halo circular punteado celeste y etiqueta directa `★ TICKER` en tiempo real.
+3. **Transparencia Total de Datos (Inputs del Algoritmo DCF)**:
+   - Tarjeta dedicada que desglosa los ingresos (Revenue), EBITDA, Flujo de Caja Libre (FCF), Deuda Neta, Margen Operativo, múltiplo PER y comparación de tasa WACC (Eficiente vs Con Prima de Riesgo) utilizados internamente por el motor matemático.
+4. **Catálogo Integrado en Modal**:
+   - Botón *"📋 Ver los 50 CEDEARs"* que abre una cuadrícula navegable y filtrable con el universo completo de activos de BYMA.

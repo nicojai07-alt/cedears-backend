@@ -19,7 +19,7 @@
       <div class="brand-icon">📊</div>
       <div>
         <h1>CEDEARs Valuation Platform</h1>
-        <span class="brand-subtitle">50 CEDEARs BYMA • Datos Cuantitativos & Cualitativos con IA</span>
+        <span class="brand-subtitle">50 CEDEARs BYMA • Análisis Cuantitativo & Cualitativo con IA</span>
       </div>
     </div>
 
@@ -27,11 +27,11 @@
     <div class="global-mode-toggle" id="globalModeToggle">
       <span class="mode-label">Perspectiva:</span>
       <div class="toggle-switch">
-        <button id="btnModeReal" class="toggle-btn active" data-mode="REAL">
+        <button id="btnModeReal" class="toggle-btn active" data-mode="REAL" title="Ver proyecciones conservadoras con ajuste de riesgo">
           <span class="toggle-dot dot-real"></span>
           <span>Modo Real / Sostenible</span>
         </button>
-        <button id="btnModeIdeal" class="toggle-btn" data-mode="IDEAL">
+        <button id="btnModeIdeal" class="toggle-btn" data-mode="IDEAL" title="Ver proyecciones óptimas al 100% de guidance">
           <span class="toggle-dot dot-ideal"></span>
           <span>Modo Ideal (100% Guidance)</span>
         </button>
@@ -39,42 +39,54 @@
     </div>
 
     <div class="nav-actions">
+      <!-- Botón Catálogo Completo 50 CEDEARs -->
+      <button id="btnOpenCatalogModal" class="btn btn-catalog" title="Explorar la lista completa de las 50 empresas">
+        <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M4 6h16M4 12h16M4 18h16"></path></svg>
+        <span>Catálogo (50 CEDEARs)</span>
+      </button>
+
       <div class="status-badge" id="systemStatus">
         <span class="status-dot"></span>
         <span id="statusText">Conectando...</span>
       </div>
       <div class="ccl-badge">
-        <span>CCL Ref: <strong>$1.250 ARS</strong></span>
+        <span>CCL: <strong>$1.250 ARS</strong></span>
       </div>
       <a href="/api/docs" target="_blank" class="btn btn-outline" title="Ver documentación OpenAPI/Swagger">
         <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"></path><polyline points="14 2 14 8 20 8"></polyline><line x1="16" y1="13" x2="8" y2="13"></line><line x1="16" y1="17" x2="8" y2="17"></line></svg>
-        Swagger Docs
+        Swagger
       </a>
-      <button id="btnOpenAiModal" class="btn btn-secondary btn-sm" title="Análisis opcional con IA">
-        <span>🤖 Analizar con IA</span>
+      <button id="btnOpenAiModal" class="btn btn-secondary btn-sm" title="Análisis cualitativo con IA">
+        <span>🤖 IA</span>
       </button>
     </div>
   </header>
 
   <main class="container">
-    <!-- Barra de Filtros Interactivos -->
+    <!-- Barra de Filtros Interactivos & Buscador Predictivo -->
     <section class="filters-card">
       <div class="filters-header">
         <div class="filters-title-group">
-          <h2>Filtros Dinámicos del Mercado</h2>
+          <h2>Buscador Predictivo & Filtros Dinámicos</h2>
           <span class="badge badge-outline" id="activeModeBadge">Modo Activo: Real Sostenible</span>
         </div>
-        <span class="filter-count" id="filterCount">Mostrando 50 de 50 CEDEARs</span>
+        <div class="filters-header-actions">
+          <button id="btnQuickCatalog" class="btn btn-outline btn-sm">📋 Ver los 50 CEDEARs</button>
+          <span class="filter-count" id="filterCount">50 de 50 CEDEARs</span>
+        </div>
       </div>
 
       <div class="filters-grid">
-        <!-- Búsqueda / Ticker y Nombre -->
-        <div class="filter-group filter-search-group">
-          <label for="filterSearch">Buscar Ticker o Nombre de Empresa</label>
+        <!-- BUSCADOR PREDICTIVO INTELIGENTE CON AUTOCOMPLETE -->
+        <div class="filter-group filter-search-group" id="searchPredictiveContainer">
+          <label for="filterSearch">Buscador Inteligente (Ticker o Empresa)</label>
           <div class="input-icon-wrapper">
             <svg class="input-icon" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="11" cy="11" r="8"></circle><line x1="21" y1="21" x2="16.65" y2="16.65"></line></svg>
-            <input type="text" id="filterSearch" placeholder="Ej: AAPL, Apple, MELI, MercadoLibre, BMA...">
+            <input type="text" id="filterSearch" placeholder="Escribe 'M', 'Apple', 'BMA', 'NVDA'..." autocomplete="off">
+            <button id="btnClearSearch" class="btn-clear-input" style="display: none;" title="Limpiar búsqueda">&times;</button>
           </div>
+          <!-- Menú Flotante de Sugerencias Predictivas -->
+          <div class="autocomplete-dropdown" id="searchSuggestionsDropdown" style="display: none;"></div>
         </div>
 
         <!-- Sector -->
@@ -82,13 +94,13 @@
           <label for="filterSector">Sector Económico</label>
           <select id="filterSector">
             <option value="ALL">Todos los Sectores</option>
-            <option value="Technology">Technology</option>
-            <option value="Financial">Financial</option>
-            <option value="Consumer Cyclical">Consumer Cyclical</option>
-            <option value="Consumer Defensive">Consumer Defensive</option>
-            <option value="Energy">Energy</option>
-            <option value="Healthcare">Healthcare</option>
-            <option value="Basic Materials">Basic Materials</option>
+            <option value="Technology">Technology (Tecnología)</option>
+            <option value="Financial">Financial (Financiero)</option>
+            <option value="Consumer Cyclical">Consumer Cyclical (Consumo Cíclico)</option>
+            <option value="Consumer Defensive">Consumer Defensive (Consumo Defensivo)</option>
+            <option value="Energy">Energy (Energía)</option>
+            <option value="Healthcare">Healthcare (Salud)</option>
+            <option value="Basic Materials">Basic Materials (Materiales Básicos)</option>
             <option value="Communication Services">Communication Services</option>
           </select>
         </div>
@@ -116,7 +128,7 @@
           </select>
         </div>
 
-        <!-- Slider Upside Mínimo (Default a -100% para no filtrar nada) -->
+        <!-- Slider Upside Mínimo (Default -100%) -->
         <div class="filter-group">
           <div class="slider-label">
             <label for="filterUpsideMin" id="sliderLabelText">Upside Mínimo</label>
@@ -160,7 +172,7 @@
     </section>
 
     <!-- TARJETA PRINCIPAL DE INFORMACIÓN FINANCIERA DIRECTA -->
-    <section class="ticker-focus-card">
+    <section class="ticker-focus-card" id="tickerFocusCard">
       <div class="ticker-focus-header">
         <div class="focus-title-group">
           <div class="ticker-badge-main" id="focusTicker">BMA</div>
@@ -173,7 +185,7 @@
           </div>
         </div>
         <div class="focus-controls">
-          <label for="selectFocusTicker">Seleccionar CEDEAR:</label>
+          <label for="selectFocusTicker">Cambiar CEDEAR:</label>
           <select id="selectFocusTicker" class="select-ticker"></select>
         </div>
       </div>
@@ -279,29 +291,83 @@
         </div>
       </div>
 
+      <!-- TRANSPARENCIA DE DATOS: FUNDAMENTOS FINANCIEROS COMPLETOS (INPUTS DEL ALGORITMO) -->
+      <div class="fundamentals-card">
+        <div class="fundamentals-header">
+          <div class="fundamentals-title">
+            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 2v20M17 5H9.5a3.5 3.5 0 0 0 0 7h5a3.5 3.5 0 0 1 0 7H6"></path></svg>
+            <h3>Fundamentos Financieros Completos (Inputs del Algoritmo)</h3>
+          </div>
+          <span class="badge badge-outline">Transparencia Total de Datos</span>
+        </div>
+        <p class="fundamentals-desc">Todos los indicadores contables y cualitativos utilizados internamente por el motor de flujo descontado (DCF) para calcular la valuación de <strong id="fundTickerName">BMA</strong>.</p>
+        <div class="fundamentals-grid">
+          <div class="fund-box">
+            <span class="fund-label">Ingresos Trimestrales (Revenue)</span>
+            <span class="fund-val" id="fundRevenue">USD 1.800M</span>
+            <span class="fund-sub">Facturación reportada</span>
+          </div>
+          <div class="fund-box">
+            <span class="fund-label">EBITDA Trimestral</span>
+            <span class="fund-val font-mono" id="fundEbitda">USD 650M</span>
+            <span class="fund-sub">Resultado operativo bruto</span>
+          </div>
+          <div class="fund-box">
+            <span class="fund-label">Flujo de Caja Libre (FCF)</span>
+            <span class="fund-val text-emerald" id="fundFcf">USD 420M</span>
+            <span class="fund-sub">Flujo efectivo neto</span>
+          </div>
+          <div class="fund-box">
+            <span class="fund-label">Deuda Neta</span>
+            <span class="fund-val" id="fundNetDebt">USD -900M</span>
+            <span class="fund-sub">Deuda total menos caja</span>
+          </div>
+          <div class="fund-box">
+            <span class="fund-label">Margen Operativo</span>
+            <span class="fund-val font-mono" id="fundOperatingMargin">25,00%</span>
+            <span class="fund-sub">Eficiencia operativa</span>
+          </div>
+          <div class="fund-box">
+            <span class="fund-label">Múltiplo PER Actual</span>
+            <span class="fund-val" id="fundPer">11,3x</span>
+            <span class="fund-sub">Precio / Beneficio actual</span>
+          </div>
+          <div class="fund-box">
+            <span class="fund-label">Industria y País</span>
+            <span class="fund-val" id="fundIndustryCountry">Banks - Regional • Argentina</span>
+            <span class="fund-sub">Perfil de negocio</span>
+          </div>
+          <div class="fund-box">
+            <span class="fund-label">WACC Eficiente vs Con Prima</span>
+            <span class="fund-val font-mono" id="fundWaccComparison">8,50% ➔ 9,52%</span>
+            <span class="fund-sub">+1,02% prima por riesgo</span>
+          </div>
+        </div>
+      </div>
+
       <!-- Síntesis Narrativa -->
       <div class="narrative-box">
         <div class="narrative-title">
           <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"></circle><line x1="12" y1="16" x2="12" y2="12"></line><line x1="12" y1="8" x2="12.01" y2="8"></line></svg>
-          Diagnóstico y Síntesis del Modelo Predictivo
+          Diagnóstico y Justificativo Cualitativo del Algoritmo
         </div>
         <p id="focusNarrative" class="narrative-content">Cargando síntesis...</p>
       </div>
     </section>
 
-    <!-- GRÁFICOS COMPARATIVOS INTERACTIVOS (CHART.JS) -->
-    <section class="charts-grid">
+    <!-- GRÁFICOS COMPARATIVOS INTERACTIVOS (CHART.JS) CON ETIQUETAS VISUALES DIRECTAS -->
+    <section class="charts-grid" id="chartsSection">
       <!-- Gráfico 1: Barras Comparativas -->
       <div class="chart-card">
         <div class="chart-header">
           <div>
-            <h3 id="priceChartTitle">Comparativa de Precios: Actual vs. Objetivo (ARS)</h3>
-            <span class="subtext" id="priceChartSubtext">Comparando activos filtrados</span>
+            <h3 id="priceChartTitle">Comparativa Directa de Precios: Actual vs. Objetivo (ARS)</h3>
+            <span class="subtext" id="priceChartSubtext">Etiquetas de valores visibles directamente sobre cada barra</span>
           </div>
           <div class="chart-controls-group">
             <div class="chart-toggles">
               <button class="btn-toggle active" id="btnScopeSelected">Empresa Actual</button>
-              <button class="btn-toggle" id="btnScopeTop">Top 8 Filtro</button>
+              <button class="btn-toggle" id="btnScopeTop">Top 8 Mercado</button>
             </div>
             <div class="chart-toggles">
               <button class="btn-toggle active" id="btnCurrencyArs">ARS ($)</button>
@@ -318,8 +384,8 @@
       <div class="chart-card">
         <div class="chart-header">
           <div>
-            <h3>Proyección Temporal de Flujo de Fondos (FCF Proyectado)</h3>
-            <span class="subtext" id="lineChartSubtext">Trayectoria a 5 años año a año</span>
+            <h3>Proyección Temporal de Flujo de Fondos (FCF de 1 a 5 años)</h3>
+            <span class="subtext" id="lineChartSubtext">Valores proyectados visibles año a año</span>
           </div>
           <span class="badge badge-outline" id="lineChartTickerBadge">BMA</span>
         </div>
@@ -333,9 +399,9 @@
         <div class="chart-header">
           <div>
             <h3 id="scatterChartTitle">Matriz de Oportunidades: Riesgo Cualitativo vs. Retorno Proyectado</h3>
-            <span class="subtext">Haz clic en cualquier punto para inspeccionar el activo en detalle</span>
+            <span class="subtext">El activo seleccionado está resaltado en el gráfico con un halo distintivo. Haz clic en cualquier punto para inspeccionarlo.</span>
           </div>
-          <span class="badge badge-primary" id="scatterModeBadge">Eje Y: Upside Real Sostenible</span>
+          <span class="badge badge-primary" id="scatterModeBadge">Eje Y: Upside Real Sostenible (%)</span>
         </div>
         <div class="chart-container tall">
           <canvas id="chartScatter"></canvas>
@@ -379,6 +445,34 @@
       </div>
     </section>
   </main>
+
+  <!-- MODAL CATÁLOGO COMPLETO DE LOS 50 CEDEARs -->
+  <div class="modal-overlay" id="catalogModal">
+    <div class="modal-card modal-lg">
+      <div class="modal-header">
+        <div class="modal-title-group">
+          <div class="brand-icon">📋</div>
+          <div>
+            <h3>Catálogo Oficial de los 50 CEDEARs de BYMA</h3>
+            <span class="subtext">Lista completa ordenada alfabéticamente con ratios de conversión oficiales</span>
+          </div>
+        </div>
+        <button class="modal-close" id="btnCloseCatalogModal">&times;</button>
+      </div>
+
+      <div class="catalog-modal-search">
+        <input type="text" id="catalogSearchInput" placeholder="Filtrar por nombre o ticker en el catálogo..." class="input-full">
+      </div>
+
+      <div class="catalog-grid" id="catalogGrid">
+        <!-- Generado dinámicamente con los 50 CEDEARs -->
+      </div>
+
+      <div class="modal-footer">
+        <button type="button" class="btn btn-secondary" id="btnCloseCatalogBtn">Cerrar</button>
+      </div>
+    </div>
+  </div>
 
   <!-- MODAL DE ANÁLISIS CUALITATIVO CON IA (OPCIONAL) -->
   <div class="modal-overlay" id="aiModal">
