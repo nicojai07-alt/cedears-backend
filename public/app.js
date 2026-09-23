@@ -5,7 +5,9 @@
 let allPredictions = [];
 let filteredPredictions = [];
 let selectedTicker = 'BMA';
+let currentMode = 'REAL'; // 'REAL' | 'IDEAL'
 let currencyMode = 'ARS'; // 'ARS' | 'USD'
+let chartPriceScope = 'SELECTED'; // 'SELECTED' | 'TOP'
 
 // Chart.js Instances
 let chartPriceComparison = null;
@@ -15,20 +17,27 @@ let chartScatter = null;
 // DOM Elements
 const systemStatusEl = document.getElementById('systemStatus');
 const statusTextEl = document.getElementById('statusText');
+const btnModeRealEl = document.getElementById('btnModeReal');
+const btnModeIdealEl = document.getElementById('btnModeIdeal');
+const activeModeBadgeEl = document.getElementById('activeModeBadge');
+
 const filterSearchEl = document.getElementById('filterSearch');
 const filterSectorEl = document.getElementById('filterSector');
 const filterRecommendationEl = document.getElementById('filterRecommendation');
 const filterHorizonEl = document.getElementById('filterHorizon');
 const filterUpsideMinEl = document.getElementById('filterUpsideMin');
 const upsideMinValueEl = document.getElementById('upsideMinValue');
+const sliderLabelTextEl = document.getElementById('sliderLabelText');
 const btnResetFiltersEl = document.getElementById('btnResetFilters');
 const filterCountEl = document.getElementById('filterCount');
 const selectFocusTickerEl = document.getElementById('selectFocusTicker');
 const screenerTableBodyEl = document.getElementById('screenerTableBody');
-const tableFilterInputEl = document.getElementById('tableFilterInput');
+const tableStatusCountEl = document.getElementById('tableStatusCount');
 
 const btnCurrencyArsEl = document.getElementById('btnCurrencyArs');
 const btnCurrencyUsdEl = document.getElementById('btnCurrencyUsd');
+const btnScopeSelectedEl = document.getElementById('btnScopeSelected');
+const btnScopeTopEl = document.getElementById('btnScopeTop');
 
 // AI Modal Elements
 const aiModalEl = document.getElementById('aiModal');
@@ -38,6 +47,15 @@ const btnCancelAiEl = document.getElementById('btnCancelAi');
 const aiAnalysisFormEl = document.getElementById('aiAnalysisForm');
 const aiTickerEl = document.getElementById('aiTicker');
 const aiResultBoxEl = document.getElementById('aiResultBox');
+
+// Helper para normalizar cadenas (sin acentos, minúsculas)
+function normalizeText(str) {
+  return (str || '')
+    .toLowerCase()
+    .normalize("NFD")
+    .replace(/[\u0300-\u036f]/g, "")
+    .trim();
+}
 
 // ==========================================================================
 // Initialization
@@ -49,15 +67,20 @@ document.addEventListener('DOMContentLoaded', async () => {
 });
 
 function setupEventListeners() {
+  // Global Mode Toggle (Real vs Ideal)
+  btnModeRealEl.addEventListener('click', () => setGlobalMode('REAL'));
+  btnModeIdealEl.addEventListener('click', () => setGlobalMode('IDEAL'));
+
+  // Filtros
   filterSearchEl.addEventListener('input', applyFilters);
   filterSectorEl.addEventListener('change', applyFilters);
   filterRecommendationEl.addEventListener('change', applyFilters);
-  filterHorizonEl.addEventListener('change', () => {
-    updateTimelineChart();
-  });
+  filterHorizonEl.addEventListener('change', () => updateTimelineChart());
 
+  // Slider con default a -100%
   filterUpsideMinEl.addEventListener('input', (e) => {
-    upsideMinValueEl.textContent = `${e.target.value}%`;
+    const val = parseFloat(e.target.value);
+    upsideMinValueEl.textContent = val <= -100 ? 'Todos (-100%)' : `${val}%`;
     applyFilters();
   });
 
@@ -67,15 +90,13 @@ function setupEventListeners() {
     selectTicker(e.target.value);
   });
 
+  // Toggles de Gráficos
   btnCurrencyArsEl.addEventListener('click', () => setCurrencyMode('ARS'));
   btnCurrencyUsdEl.addEventListener('click', () => setCurrencyMode('USD'));
+  btnScopeSelectedEl.addEventListener('click', () => setPriceScope('SELECTED'));
+  btnScopeTopEl.addEventListener('click', () => setPriceScope('TOP'));
 
-  tableFilterInputEl.addEventListener('input', (e) => {
-    filterSearchEl.value = e.target.value;
-    applyFilters();
-  });
-
-  // Table header sorting
+  // Ordenamiento de tabla
   document.querySelectorAll('#screenerTable th[data-sort]').forEach(th => {
     th.addEventListener('click', () => {
       const field = th.dataset.sort;
@@ -83,7 +104,7 @@ function setupEventListeners() {
     });
   });
 
-  // AI Modal
+  // Modal de IA (opcional)
   btnOpenAiModalEl.addEventListener('click', () => {
     aiTickerEl.value = selectedTicker;
     aiResultBoxEl.style.display = 'none';
@@ -92,8 +113,61 @@ function setupEventListeners() {
 
   btnCloseAiModalEl.addEventListener('click', () => aiModalEl.classList.remove('active'));
   btnCancelAiEl.addEventListener('click', () => aiModalEl.classList.remove('active'));
-
   aiAnalysisFormEl.addEventListener('submit', handleAiSubmit);
+}
+
+// ==========================================================================
+// Global Mode Management (Real vs Ideal)
+// ==========================================================================
+function setGlobalMode(mode) {
+  currentMode = mode;
+  document.body.className = mode === 'REAL' ? 'mode-real-active' : 'mode-ideal-active';
+
+  if (mode === 'REAL') {
+    btnModeRealEl.classList.add('active');
+    btnModeIdealEl.classList.remove('active');
+    activeModeBadgeEl.textContent = 'Modo Activo: Real Sostenible (Con Riesgo)';
+    activeModeBadgeEl.className = 'badge badge-emerald';
+    sliderLabelTextEl.textContent = 'Upside Real Mínimo';
+    document.getElementById('thTargetPrice').textContent = 'Target Real (ARS)';
+    document.getElementById('thUpside').textContent = 'Upside Real (%)';
+  } else {
+    btnModeIdealEl.classList.add('active');
+    btnModeRealEl.classList.remove('active');
+    activeModeBadgeEl.textContent = 'Modo Activo: Ideal (100% Guidance)';
+    activeModeBadgeEl.className = 'badge badge-purple';
+    sliderLabelTextEl.textContent = 'Upside Ideal Mínimo';
+    document.getElementById('thTargetPrice').textContent = 'Target Ideal (ARS)';
+    document.getElementById('thUpside').textContent = 'Upside Ideal (%)';
+  }
+
+  updateKpis();
+  applyFilters();
+  selectTicker(selectedTicker);
+}
+
+function setCurrencyMode(mode) {
+  currencyMode = mode;
+  if (mode === 'ARS') {
+    btnCurrencyArsEl.classList.add('active');
+    btnCurrencyUsdEl.classList.remove('active');
+  } else {
+    btnCurrencyUsdEl.classList.add('active');
+    btnCurrencyArsEl.classList.remove('active');
+  }
+  updatePriceComparisonChart();
+}
+
+function setPriceScope(scope) {
+  chartPriceScope = scope;
+  if (scope === 'SELECTED') {
+    btnScopeSelectedEl.classList.add('active');
+    btnScopeTopEl.classList.remove('active');
+  } else {
+    btnScopeTopEl.classList.add('active');
+    btnScopeSelectedEl.classList.remove('active');
+  }
+  updatePriceComparisonChart();
 }
 
 // ==========================================================================
@@ -132,7 +206,7 @@ async function loadBatchPredictions() {
     updateKpis();
     applyFilters();
 
-    // Select first opportunity by default (e.g. BMA or top upside)
+    // Seleccionar por defecto la primera oportunidad (ej: BMA)
     if (allPredictions.length > 0) {
       selectTicker(allPredictions[0].ticker);
     }
@@ -151,7 +225,7 @@ function populateTickerSelects() {
   allPredictions.forEach(p => {
     const option = document.createElement('option');
     option.value = p.ticker;
-    option.textContent = `${p.ticker} - ${p.companyName || p.underlyingTicker} (${p.realSustainableBaseCaseScenario.upsidePotentialPercentage >= 0 ? '+' : ''}${p.realSustainableBaseCaseScenario.upsidePotentialPercentage}%)`;
+    option.textContent = `${p.ticker} - ${p.companyName || p.underlyingTicker}`;
     selectFocusTickerEl.appendChild(option);
 
     const aiOption = document.createElement('option');
@@ -163,30 +237,48 @@ function populateTickerSelects() {
 
 function updateKpis() {
   document.getElementById('kpiTotalCompanies').textContent = allPredictions.length;
-
   if (allPredictions.length === 0) return;
 
-  // Top Upside
-  const sorted = [...allPredictions].sort((a, b) =>
-    b.realSustainableBaseCaseScenario.upsidePotentialPercentage - a.realSustainableBaseCaseScenario.upsidePotentialPercentage
-  );
+  const isReal = currentMode === 'REAL';
+
+  // KPI Top Upside según el modo
+  const sorted = [...allPredictions].sort((a, b) => {
+    const upA = isReal ? a.realSustainableBaseCaseScenario.upsidePotentialPercentage : a.idealBestCaseScenario.upsidePotentialPercentage;
+    const upB = isReal ? b.realSustainableBaseCaseScenario.upsidePotentialPercentage : b.idealBestCaseScenario.upsidePotentialPercentage;
+    return upB - upA;
+  });
   const top = sorted[0];
-  document.getElementById('kpiTopUpside').textContent = `+${top.realSustainableBaseCaseScenario.upsidePotentialPercentage.toFixed(1)}%`;
-  document.getElementById('kpiTopTicker').textContent = `${top.ticker} ($${top.realSustainableBaseCaseScenario.targetPriceCedearArs.toLocaleString('es-AR')} ARS)`;
+  const topUpside = isReal ? top.realSustainableBaseCaseScenario.upsidePotentialPercentage : top.idealBestCaseScenario.upsidePotentialPercentage;
+  const topTarget = isReal ? top.realSustainableBaseCaseScenario.targetPriceCedearArs : top.idealBestCaseScenario.targetPriceCedearArs;
 
-  // Average Upside
-  const avgUpside = allPredictions.reduce((acc, p) => acc + p.realSustainableBaseCaseScenario.upsidePotentialPercentage, 0) / allPredictions.length;
+  const topTitleEl = document.getElementById('kpiTopTitle');
+  const topUpsideEl = document.getElementById('kpiTopUpside');
+  topTitleEl.textContent = isReal ? 'Mayor Potencial Real' : 'Mayor Potencial Ideal';
+  topUpsideEl.textContent = `+${topUpside.toFixed(1)}%`;
+  topUpsideEl.className = `kpi-value ${isReal ? 'text-emerald' : 'text-purple'}`;
+  document.getElementById('kpiTopTicker').textContent = `${top.ticker} ($${topTarget.toLocaleString('es-AR')} ARS)`;
+
+  // KPI Promedio de Mercado según el modo
+  const avgUpside = allPredictions.reduce((acc, p) => {
+    return acc + (isReal ? p.realSustainableBaseCaseScenario.upsidePotentialPercentage : p.idealBestCaseScenario.upsidePotentialPercentage);
+  }, 0) / allPredictions.length;
+
+  const avgTitleEl = document.getElementById('kpiAvgTitle');
   const avgUpsideEl = document.getElementById('kpiAvgUpside');
-  avgUpsideEl.textContent = `${avgUpside >= 0 ? '+' : ''}${avgUpside.toFixed(1)}%`;
-  avgUpsideEl.className = `kpi-value ${avgUpside >= 0 ? 'text-emerald' : 'text-amber'}`;
+  const avgSubtextEl = document.getElementById('kpiAvgSubtext');
 
-  // Average Risk Discount
+  avgTitleEl.textContent = isReal ? 'Upside Promedio Real' : 'Upside Promedio Ideal';
+  avgUpsideEl.textContent = `${avgUpside >= 0 ? '+' : ''}${avgUpside.toFixed(1)}%`;
+  avgUpsideEl.className = `kpi-value ${isReal ? (avgUpside >= 0 ? 'text-emerald' : 'text-red') : 'text-purple'}`;
+  avgSubtextEl.textContent = isReal ? 'Escenario Sostenible con Riesgo' : 'Escenario 100% Guidance Óptimo';
+
+  // Riesgo Promedio
   const avgRisk = allPredictions.reduce((acc, p) => acc + p.realSustainableBaseCaseScenario.appliedRiskDiscountPercentage, 0) / allPredictions.length;
   document.getElementById('kpiAvgRisk').textContent = `${avgRisk.toFixed(1)}%`;
 }
 
 // ==========================================================================
-// Ticker Focus & Dedicated Sections (Real vs Ideal)
+// Ticker Selection & Direct Financial Information Cards
 // ==========================================================================
 function selectTicker(ticker) {
   selectedTicker = ticker;
@@ -197,52 +289,62 @@ function selectTicker(ticker) {
 
   const real = pred.realSustainableBaseCaseScenario;
   const ideal = pred.idealBestCaseScenario;
+  const isReal = currentMode === 'REAL';
 
-  // Header
+  // Header del foco
   document.getElementById('focusTicker').textContent = pred.ticker;
   document.getElementById('focusName').textContent = pred.companyName || pred.ticker;
   document.getElementById('focusSector').textContent = `${pred.sector || 'General'} • NYSE/NASDAQ: ${pred.underlyingTicker} • Ratio BYMA: ${pred.cedearRatio.cedearShares}:${pred.cedearRatio.underlyingShares}`;
 
-  // Recommendation Badge
+  // Badge de recomendación
   const recBadge = document.getElementById('focusRecommendation');
   recBadge.textContent = pred.recommendation.replace('_', ' ');
   recBadge.className = `badge ${getRecommendationBadgeClass(pred.recommendation)}`;
 
-  // SECCIÓN 1: DATOS REALES (MERCADO & SOSTENIBLE)
-  document.getElementById('realCedearPrice').textContent = `$${pred.currentPriceCedearArs.toLocaleString('es-AR')}`;
-  document.getElementById('realUsdPrice').textContent = `USD ${pred.currentPriceUnderlyingUsd.toFixed(2)}`;
-  document.getElementById('realRatio').textContent = `${pred.cedearRatio.cedearShares}:${pred.cedearRatio.underlyingShares}`;
-  document.getElementById('realCcl').textContent = `$${pred.impliedCclExchangeRate.toLocaleString('es-AR')} ARS`;
+  // 1. TARJETAS DE INFORMACIÓN FINANCIERA DIRECTA
+  document.getElementById('directPriceArs').textContent = `$${pred.currentPriceCedearArs.toLocaleString('es-AR')} ARS`;
+  document.getElementById('directPriceUsd').textContent = `USD ${pred.currentPriceUnderlyingUsd.toFixed(2)}`;
+  document.getElementById('directRatio').textContent = `${pred.cedearRatio.cedearShares}:${pred.cedearRatio.underlyingShares}`;
+  document.getElementById('directCcl').textContent = `$${pred.impliedCclExchangeRate.toLocaleString('es-AR')} ARS`;
+  document.getElementById('directUnderlying').textContent = `Ticker original: ${pred.underlyingTicker}`;
 
+  // Adaptación de tarjetas destacadas según el modo activo
+  const targetArs = isReal ? real.targetPriceCedearArs : ideal.targetPriceCedearArs;
+  const targetUsd = isReal ? real.targetPriceUnderlyingUsd : ideal.targetPriceUnderlyingUsd;
+  const upsidePct = isReal ? real.upsidePotentialPercentage : ideal.upsidePotentialPercentage;
+
+  document.getElementById('directTargetLabel').textContent = isReal ? 'Precio Objetivo Real (ARS)' : 'Precio Objetivo Ideal (ARS)';
+  const directTargetArsEl = document.getElementById('directTargetArs');
+  directTargetArsEl.textContent = `$${targetArs.toLocaleString('es-AR')} ARS`;
+  directTargetArsEl.className = `direct-value font-lg ${isReal ? 'text-emerald' : 'text-purple'}`;
+  document.getElementById('directTargetUsd').textContent = `USD ${targetUsd.toFixed(2)}`;
+
+  document.getElementById('directUpsideLabel').textContent = isReal ? 'Potencial de Suba Real' : 'Potencial Máximo Ideal';
+  const directUpsideEl = document.getElementById('directUpside');
+  directUpsideEl.textContent = `${upsidePct >= 0 ? '+' : ''}${upsidePct.toFixed(2)}%`;
+  directUpsideEl.className = `direct-value font-lg ${isReal ? (upsidePct >= 0 ? 'text-emerald' : 'text-red') : 'text-purple'}`;
+  document.getElementById('directUpsideSub').textContent = isReal ? 'Margen Sostenible Real' : 'Escenario 100% Guidance';
+
+  // 2. DETALLES COMPARATIVOS: SECCIÓN REAL
   document.getElementById('realTargetCedear').textContent = `$${real.targetPriceCedearArs.toLocaleString('es-AR')}`;
   document.getElementById('realTargetUsd').textContent = `USD ${real.targetPriceUnderlyingUsd.toFixed(2)}`;
-
-  const realUpsideEl = document.getElementById('realUpside');
-  realUpsideEl.textContent = `${real.upsidePotentialPercentage >= 0 ? '+' : ''}${real.upsidePotentialPercentage.toFixed(2)}%`;
-  realUpsideEl.className = `metric-value font-lg ${real.upsidePotentialPercentage >= 0 ? 'text-emerald' : 'text-red'}`;
-
+  const realUpsideDetailEl = document.getElementById('realUpsideDetail');
+  realUpsideDetailEl.textContent = `${real.upsidePotentialPercentage >= 0 ? '+' : ''}${real.upsidePotentialPercentage.toFixed(2)}%`;
+  realUpsideDetailEl.className = `metric-value font-lg ${real.upsidePotentialPercentage >= 0 ? 'text-emerald' : 'text-red'}`;
   document.getElementById('realRiskDiscount').textContent = `${real.appliedRiskDiscountPercentage.toFixed(2)}%`;
   document.getElementById('realWacc').textContent = `${(real.wacc * 100).toFixed(2)}%`;
 
-  // SECCIÓN 2: DATOS IDEALES (BEST-CASE TEÓRICO)
-  document.getElementById('idealGrowth').textContent = `${(ideal.projectedAnnualGrowthRate * 100).toFixed(2)}%`;
-  document.getElementById('idealWacc').textContent = `${(ideal.wacc * 100).toFixed(2)}%`;
-  document.getElementById('idealPer').textContent = `${ideal.targetPerMultiple.toFixed(1)}x`;
-
+  // 3. DETALLES COMPARATIVOS: SECCIÓN IDEAL
   document.getElementById('idealTargetCedear').textContent = `$${ideal.targetPriceCedearArs.toLocaleString('es-AR')}`;
   document.getElementById('idealTargetUsd').textContent = `USD ${ideal.targetPriceUnderlyingUsd.toFixed(2)}`;
-
-  const idealUpsideEl = document.getElementById('idealUpside');
-  idealUpsideEl.textContent = `${ideal.upsidePotentialPercentage >= 0 ? '+' : ''}${ideal.upsidePotentialPercentage.toFixed(2)}%`;
-  idealUpsideEl.className = `metric-value font-lg ${ideal.upsidePotentialPercentage >= 0 ? 'text-purple' : 'text-amber'}`;
-
+  const idealUpsideDetailEl = document.getElementById('idealUpsideDetail');
+  idealUpsideDetailEl.textContent = `${ideal.upsidePotentialPercentage >= 0 ? '+' : ''}${ideal.upsidePotentialPercentage.toFixed(2)}%`;
+  idealUpsideDetailEl.className = `metric-value font-lg ${ideal.upsidePotentialPercentage >= 0 ? 'text-purple' : 'text-amber'}`;
+  document.getElementById('idealGrowth').textContent = `${(ideal.projectedAnnualGrowthRate * 100).toFixed(2)}%`;
   document.getElementById('focusSpread').textContent = `${pred.spreadBetweenScenariosPercentage.toFixed(2)}%`;
-  document.getElementById('idealEv').textContent = `USD ${(ideal.enterpriseValueUsd / 1_000_000_000).toFixed(1)}B`;
 
   // Síntesis Narrativa
   document.getElementById('focusNarrative').textContent = pred.synthesisNarrative;
-
-  // Badge del Gráfico de Líneas
   document.getElementById('lineChartTickerBadge').textContent = pred.ticker;
 
   // Actualizar fila activa en la tabla
@@ -255,38 +357,49 @@ function selectTicker(ticker) {
   });
 
   // Actualizar gráficos
+  updatePriceComparisonChart();
   updateTimelineChart();
 }
 
 // ==========================================================================
-// Filtering & Table Render
+// Filtering & Search (Insensible a mayúsculas/minúsculas y acentos)
 // ==========================================================================
 function applyFilters() {
-  const searchTerm = filterSearchEl.value.trim().toLowerCase();
+  const rawSearch = filterSearchEl.value;
+  const search = normalizeText(rawSearch);
   const sector = filterSectorEl.value;
   const recommendation = filterRecommendationEl.value;
   const minUpside = parseFloat(filterUpsideMinEl.value);
+  const isReal = currentMode === 'REAL';
 
   filteredPredictions = allPredictions.filter(p => {
-    // Search
-    const matchesSearch = !searchTerm ||
-      p.ticker.toLowerCase().includes(searchTerm) ||
-      (p.companyName && p.companyName.toLowerCase().includes(searchTerm)) ||
-      p.underlyingTicker.toLowerCase().includes(searchTerm);
+    // Búsqueda insensible a mayúsculas, minúsculas y acentos
+    const tickerNorm = normalizeText(p.ticker);
+    const nameNorm = normalizeText(p.companyName);
+    const underlyingNorm = normalizeText(p.underlyingTicker);
+    const sectorNorm = normalizeText(p.sector);
+
+    const matchesSearch = !search ||
+      tickerNorm.includes(search) ||
+      nameNorm.includes(search) ||
+      underlyingNorm.includes(search) ||
+      sectorNorm.includes(search);
 
     // Sector
     const matchesSector = sector === 'ALL' || p.sector === sector;
 
-    // Recommendation
+    // Recomendación
     const matchesRec = recommendation === 'ALL' || p.recommendation === recommendation;
 
-    // Upside Min
-    const matchesUpside = p.realSustainableBaseCaseScenario.upsidePotentialPercentage >= minUpside;
+    // Upside mínimo según el modo activo
+    const upside = isReal ? p.realSustainableBaseCaseScenario.upsidePotentialPercentage : p.idealBestCaseScenario.upsidePotentialPercentage;
+    const matchesUpside = minUpside <= -100 ? true : (upside >= minUpside);
 
     return matchesSearch && matchesSector && matchesRec && matchesUpside;
   });
 
   filterCountEl.textContent = `Mostrando ${filteredPredictions.length} de ${allPredictions.length} CEDEARs`;
+  tableStatusCountEl.textContent = `${filteredPredictions.length} de ${allPredictions.length} activos`;
 
   renderScreenerTable();
   updatePriceComparisonChart();
@@ -295,22 +408,37 @@ function applyFilters() {
 
 function resetFilters() {
   filterSearchEl.value = '';
-  tableFilterInputEl.value = '';
   filterSectorEl.value = 'ALL';
   filterRecommendationEl.value = 'ALL';
   filterHorizonEl.value = '5';
-  filterUpsideMinEl.value = -50;
-  upsideMinValueEl.textContent = '-50%';
+  filterUpsideMinEl.value = -100;
+  upsideMinValueEl.textContent = 'Todos (-100%)';
   applyFilters();
 }
 
+// ==========================================================================
+// Screener Table Render
+// ==========================================================================
 function renderScreenerTable() {
   screenerTableBodyEl.innerHTML = '';
 
   if (filteredPredictions.length === 0) {
-    screenerTableBodyEl.innerHTML = `<tr><td colspan="12" style="text-align:center; padding: 2rem; color: var(--text-dim);">No se encontraron CEDEARs con los filtros seleccionados.</td></tr>`;
+    screenerTableBodyEl.innerHTML = `
+      <tr>
+        <td colspan="12">
+          <div class="empty-state">
+            <span class="empty-state-icon">🔍</span>
+            <h4>No se encontraron CEDEARs</h4>
+            <p>Ningún activo coincide con la búsqueda o filtros seleccionados. Intenta restablecer los filtros para volver a ver los 50 CEDEARs.</p>
+            <button class="btn btn-secondary btn-sm" onclick="resetFilters()">Restablecer Filtros</button>
+          </div>
+        </td>
+      </tr>
+    `;
     return;
   }
+
+  const isReal = currentMode === 'REAL';
 
   filteredPredictions.forEach((p, idx) => {
     const tr = document.createElement('tr');
@@ -319,29 +447,33 @@ function renderScreenerTable() {
       tr.classList.add('active-row');
     }
 
+    const realTarget = p.realSustainableBaseCaseScenario.targetPriceCedearArs;
+    const idealTarget = p.idealBestCaseScenario.targetPriceCedearArs;
     const realUpside = p.realSustainableBaseCaseScenario.upsidePotentialPercentage;
     const idealUpside = p.idealBestCaseScenario.upsidePotentialPercentage;
 
+    const displayTarget = isReal ? realTarget : idealTarget;
+    const displayUpside = isReal ? realUpside : idealUpside;
+    const upsideClass = isReal ? (displayUpside >= 0 ? 'text-emerald' : 'text-red') : 'text-purple';
+
     tr.innerHTML = `
       <td class="font-mono text-dim">${idx + 1}</td>
-      <td><strong>${p.ticker}</strong> <span class="subtext">(${p.cedearRatio.cedearShares}:${p.cedearRatio.underlyingShares})</span></td>
+      <td><strong>${p.ticker}</strong></td>
       <td>${p.companyName || p.ticker}</td>
       <td><span class="subtext">${p.sector || 'General'}</span></td>
       <td class="font-mono">$${p.currentPriceCedearArs.toLocaleString('es-AR')}</td>
-      <td class="font-mono text-emerald">$${p.realSustainableBaseCaseScenario.targetPriceCedearArs.toLocaleString('es-AR')}</td>
-      <td class="font-mono text-purple">$${p.idealBestCaseScenario.targetPriceCedearArs.toLocaleString('es-AR')}</td>
-      <td class="font-mono ${realUpside >= 0 ? 'text-emerald' : 'text-red'}"><strong>${realUpside >= 0 ? '+' : ''}${realUpside.toFixed(1)}%</strong></td>
-      <td class="font-mono text-purple">${idealUpside >= 0 ? '+' : ''}${idealUpside.toFixed(1)}%</td>
+      <td class="font-mono text-dim">USD ${p.currentPriceUnderlyingUsd.toFixed(2)}</td>
+      <td class="font-mono">${p.cedearRatio.cedearShares}:${p.cedearRatio.underlyingShares}</td>
+      <td class="font-mono ${isReal ? 'text-emerald' : 'text-purple'}"><strong>$${displayTarget.toLocaleString('es-AR')}</strong></td>
+      <td class="font-mono ${upsideClass}"><strong>${displayUpside >= 0 ? '+' : ''}${displayUpside.toFixed(1)}%</strong></td>
       <td class="font-mono text-amber">${p.realSustainableBaseCaseScenario.appliedRiskDiscountPercentage.toFixed(0)}%</td>
       <td><span class="badge ${getRecommendationBadgeClass(p.recommendation)}">${p.recommendation.replace('_', ' ')}</span></td>
       <td>
-        <button class="btn btn-sm btn-outline btn-select" data-ticker="${p.ticker}">Ver Detalle</button>
+        <button class="btn btn-sm btn-outline btn-select" data-ticker="${p.ticker}">Ver</button>
       </td>
     `;
 
-    tr.addEventListener('click', (e) => {
-      selectTicker(p.ticker);
-    });
+    tr.addEventListener('click', () => selectTicker(p.ticker));
 
     const btn = tr.querySelector('.btn-select');
     btn.addEventListener('click', (e) => {
@@ -365,6 +497,8 @@ function sortTable(field) {
 
   filteredPredictions.sort((a, b) => {
     let valA, valB;
+    const isReal = currentMode === 'REAL';
+
     if (field === 'rank') {
       valA = allPredictions.indexOf(a);
       valB = allPredictions.indexOf(b);
@@ -380,18 +514,18 @@ function sortTable(field) {
     } else if (field === 'currentPriceCedearArs') {
       valA = a.currentPriceCedearArs;
       valB = b.currentPriceCedearArs;
-    } else if (field === 'realTargetCedearArs') {
-      valA = a.realSustainableBaseCaseScenario.targetPriceCedearArs;
-      valB = b.realSustainableBaseCaseScenario.targetPriceCedearArs;
-    } else if (field === 'idealTargetCedearArs') {
-      valA = a.idealBestCaseScenario.targetPriceCedearArs;
-      valB = b.idealBestCaseScenario.targetPriceCedearArs;
-    } else if (field === 'realUpsidePercentage') {
-      valA = a.realSustainableBaseCaseScenario.upsidePotentialPercentage;
-      valB = b.realSustainableBaseCaseScenario.upsidePotentialPercentage;
-    } else if (field === 'idealUpsidePercentage') {
-      valA = a.idealBestCaseScenario.upsidePotentialPercentage;
-      valB = b.idealBestCaseScenario.upsidePotentialPercentage;
+    } else if (field === 'currentPriceUnderlyingUsd') {
+      valA = a.currentPriceUnderlyingUsd;
+      valB = b.currentPriceUnderlyingUsd;
+    } else if (field === 'cedearRatio') {
+      valA = a.cedearRatio.cedearShares;
+      valB = b.cedearRatio.cedearShares;
+    } else if (field === 'targetPrice') {
+      valA = isReal ? a.realSustainableBaseCaseScenario.targetPriceCedearArs : a.idealBestCaseScenario.targetPriceCedearArs;
+      valB = isReal ? b.realSustainableBaseCaseScenario.targetPriceCedearArs : b.idealBestCaseScenario.targetPriceCedearArs;
+    } else if (field === 'upsidePercentage') {
+      valA = isReal ? a.realSustainableBaseCaseScenario.upsidePotentialPercentage : a.idealBestCaseScenario.upsidePotentialPercentage;
+      valB = isReal ? b.realSustainableBaseCaseScenario.upsidePotentialPercentage : b.idealBestCaseScenario.upsidePotentialPercentage;
     } else if (field === 'riskDiscountPercentage') {
       valA = a.realSustainableBaseCaseScenario.appliedRiskDiscountPercentage;
       valB = b.realSustainableBaseCaseScenario.appliedRiskDiscountPercentage;
@@ -409,18 +543,6 @@ function sortTable(field) {
   renderScreenerTable();
 }
 
-function setCurrencyMode(mode) {
-  currencyMode = mode;
-  if (mode === 'ARS') {
-    btnCurrencyArsEl.classList.add('active');
-    btnCurrencyUsdEl.classList.remove('active');
-  } else {
-    btnCurrencyUsdEl.classList.add('active');
-    btnCurrencyArsEl.classList.remove('active');
-  }
-  updatePriceComparisonChart();
-}
-
 function getRecommendationBadgeClass(rec) {
   switch (rec) {
     case 'STRONG_BUY': return 'badge-strong-buy';
@@ -436,15 +558,26 @@ function getRecommendationBadgeClass(rec) {
 // Chart.js Visualizations
 // ==========================================================================
 
-// Gráfico 1: Barras Comparativas (Precios Actuales vs Reales vs Ideales)
+// GRÁFICO 1: BARRAS COMPARATIVAS (PRECIOS ACTUALES VS TARGETS)
 function updatePriceComparisonChart() {
   const ctx = document.getElementById('chartPriceComparison').getContext('2d');
-
-  // Muestra hasta 8 CEDEARs destacados del conjunto filtrado
-  const sample = filteredPredictions.slice(0, 8);
-  const labels = sample.map(p => p.ticker);
-
   const isArs = currencyMode === 'ARS';
+  const isReal = currentMode === 'REAL';
+
+  // Determinar muestra según el scope
+  let sample = [];
+  if (chartPriceScope === 'SELECTED') {
+    const current = allPredictions.find(p => p.ticker === selectedTicker);
+    sample = current ? [current] : [];
+    document.getElementById('priceChartTitle').textContent = `Comparativa de Precios: ${selectedTicker} (${isArs ? 'ARS' : 'USD'})`;
+    document.getElementById('priceChartSubtext').textContent = 'Precio Actual vs. Precio Objetivo Real e Ideal';
+  } else {
+    sample = filteredPredictions.slice(0, 8);
+    document.getElementById('priceChartTitle').textContent = `Comparativa Top 8 CEDEARs (${isArs ? 'ARS' : 'USD'})`;
+    document.getElementById('priceChartSubtext').textContent = 'Evaluación simultánea de los activos filtrados';
+  }
+
+  const labels = sample.map(p => p.ticker);
 
   const dataCurrent = sample.map(p => isArs ? p.currentPriceCedearArs : p.currentPriceUnderlyingUsd);
   const dataReal = sample.map(p => isArs ? p.realSustainableBaseCaseScenario.targetPriceCedearArs : p.realSustainableBaseCaseScenario.targetPriceUnderlyingUsd);
@@ -468,13 +601,17 @@ function updatePriceComparisonChart() {
         {
           label: isArs ? 'Target Real Sostenible (ARS)' : 'Target Real (USD)',
           data: dataReal,
-          backgroundColor: 'rgba(16, 185, 129, 0.85)',
+          backgroundColor: isReal ? 'rgba(16, 185, 129, 0.95)' : 'rgba(16, 185, 129, 0.45)',
+          borderColor: isReal ? '#10b981' : 'transparent',
+          borderWidth: isReal ? 2 : 0,
           borderRadius: 4
         },
         {
-          label: isArs ? 'Target Ideal Best-Case (ARS)' : 'Target Ideal (USD)',
+          label: isArs ? 'Target Ideal (ARS)' : 'Target Ideal (USD)',
           data: dataIdeal,
-          backgroundColor: 'rgba(168, 85, 247, 0.85)',
+          backgroundColor: !isReal ? 'rgba(168, 85, 247, 0.95)' : 'rgba(168, 85, 247, 0.45)',
+          borderColor: !isReal ? '#a855f7' : 'transparent',
+          borderWidth: !isReal ? 2 : 0,
           borderRadius: 4
         }
       ]
@@ -509,13 +646,14 @@ function updatePriceComparisonChart() {
   });
 }
 
-// Gráfico 2: Líneas Temporales de Flujo de Fondos (FCF Proyectado)
+// GRÁFICO 2: LÍNEAS TEMPORALES DE PROYECCIÓN FCF (1 A 5 AÑOS)
 function updateTimelineChart() {
   const ctx = document.getElementById('chartTimeline').getContext('2d');
   const pred = allPredictions.find(p => p.ticker === selectedTicker);
   if (!pred) return;
 
   const horizon = parseInt(filterHorizonEl.value, 10) || 5;
+  const isReal = currentMode === 'REAL';
 
   const realTimeline = pred.realSustainableBaseCaseScenario.timeline.slice(0, horizon);
   const idealTimeline = pred.idealBestCaseScenario.timeline.slice(0, horizon);
@@ -524,7 +662,7 @@ function updateTimelineChart() {
   const dataRealFcf = realTimeline.map(t => Math.round(t.projectedFreeCashFlow / 1_000_000));
   const dataIdealFcf = idealTimeline.map(t => Math.round(t.projectedFreeCashFlow / 1_000_000));
 
-  document.getElementById('lineChartSubtext').textContent = `Trayectoria a ${horizon} año(s) para ${pred.ticker} (${pred.companyName || ''})`;
+  document.getElementById('lineChartSubtext').textContent = `Trayectoria de ${horizon} año(s) para ${pred.ticker} (${pred.companyName || ''})`;
 
   if (chartTimeline) {
     chartTimeline.destroy();
@@ -539,21 +677,23 @@ function updateTimelineChart() {
           label: 'FCF Proyectado Real (Millones USD)',
           data: dataRealFcf,
           borderColor: '#10b981',
-          backgroundColor: 'rgba(16, 185, 129, 0.1)',
+          backgroundColor: isReal ? 'rgba(16, 185, 129, 0.15)' : 'rgba(16, 185, 129, 0.03)',
           fill: true,
           tension: 0.35,
-          borderWidth: 2.5,
-          pointBackgroundColor: '#10b981'
+          borderWidth: isReal ? 3 : 1.5,
+          pointBackgroundColor: '#10b981',
+          pointRadius: isReal ? 5 : 3
         },
         {
           label: 'FCF Proyectado Ideal (Millones USD)',
           data: dataIdealFcf,
           borderColor: '#a855f7',
-          backgroundColor: 'rgba(168, 85, 247, 0.08)',
+          backgroundColor: !isReal ? 'rgba(168, 85, 247, 0.15)' : 'rgba(168, 85, 247, 0.03)',
           fill: true,
           tension: 0.35,
-          borderWidth: 2.5,
-          pointBackgroundColor: '#a855f7'
+          borderWidth: !isReal ? 3 : 1.5,
+          pointBackgroundColor: '#a855f7',
+          pointRadius: !isReal ? 5 : 3
         }
       ]
     },
@@ -587,9 +727,12 @@ function updateTimelineChart() {
   });
 }
 
-// Gráfico 3: Dispersión Riesgo vs Retorno (Matriz de Inversión)
+// GRÁFICO 3: MATRIZ DE MERCADO (DISPERSIÓN RIESGO VS RETORNO)
 function updateScatterChart() {
   const ctx = document.getElementById('chartScatter').getContext('2d');
+  const isReal = currentMode === 'REAL';
+
+  document.getElementById('scatterModeBadge').textContent = isReal ? 'Eje Y: Upside Real Sostenible (%)' : 'Eje Y: Upside Ideal Máximo (%)';
 
   const scatterData = filteredPredictions.map(p => {
     let color = '#3b82f6';
@@ -598,9 +741,11 @@ function updateScatterChart() {
     else if (p.recommendation === 'HOLD') color = '#fbbf24';
     else color = '#ef4444';
 
+    const upside = isReal ? p.realSustainableBaseCaseScenario.upsidePotentialPercentage : p.idealBestCaseScenario.upsidePotentialPercentage;
+
     return {
       x: p.realSustainableBaseCaseScenario.appliedRiskDiscountPercentage,
-      y: p.realSustainableBaseCaseScenario.upsidePotentialPercentage,
+      y: upside,
       ticker: p.ticker,
       name: p.companyName || p.ticker,
       recommendation: p.recommendation,
@@ -634,7 +779,7 @@ function updateScatterChart() {
           callbacks: {
             label: (ctx) => {
               const d = ctx.raw;
-              return `${d.ticker} (${d.name}) | Upside: ${d.y.toFixed(1)}% | Descuento Riesgo: ${d.x.toFixed(1)}% [${d.recommendation}]`;
+              return `${d.ticker} (${d.name}) | ${isReal ? 'Upside Real' : 'Upside Ideal'}: ${d.y.toFixed(1)}% | Riesgo: ${d.x.toFixed(1)}% [${d.recommendation}]`;
             }
           }
         }
@@ -656,8 +801,8 @@ function updateScatterChart() {
         y: {
           title: {
             display: true,
-            text: 'Potencial de Suba Real Sostenible (%)',
-            color: '#94a3b8',
+            text: isReal ? 'Potencial de Suba Real Sostenible (%)' : 'Potencial Máximo Ideal (%)',
+            color: isReal ? '#34d399' : '#c084fc',
             font: { family: 'Inter', size: 12, weight: 'bold' }
           },
           ticks: {
@@ -682,7 +827,7 @@ function updateScatterChart() {
 }
 
 // ==========================================================================
-// AI Analysis Form Handling
+// AI Analysis Form Handling (Opcional)
 // ==========================================================================
 async function handleAiSubmit(e) {
   e.preventDefault();
@@ -720,11 +865,10 @@ async function handleAiSubmit(e) {
     document.getElementById('resSummary').textContent = aiRes.executiveSummary;
     aiResultBoxEl.style.display = 'block';
 
-    // Recalculate prediction for this ticker
+    // Recalcular predicción para este ticker
     const predRes = await fetch(`/api/v1/predictions/${ticker}`);
     const predData = await predRes.json();
     if (predData.success) {
-      // Update in allPredictions array
       const idx = allPredictions.findIndex(p => p.ticker === ticker);
       if (idx !== -1) {
         allPredictions[idx] = predData.data;

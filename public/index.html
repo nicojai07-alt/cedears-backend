@@ -3,7 +3,7 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>Plataforma de Valuación & Modelo Predictivo de CEDEARs | Dashboard</title>
+  <title>CEDEARs Valuation Platform | Análisis Fundamental & Modelo Predictivo</title>
   <link rel="stylesheet" href="/styles.css">
   <!-- Chart.js CDN -->
   <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.7/dist/chart.umd.min.js"></script>
@@ -12,31 +12,46 @@
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&family=JetBrains+Mono:wght@400;500;700&display=swap" rel="stylesheet">
 </head>
-<body>
+<body class="mode-real-active">
   <!-- Header Superior -->
   <header class="navbar">
     <div class="nav-brand">
-      <div class="brand-icon">📈</div>
+      <div class="brand-icon">📊</div>
       <div>
         <h1>CEDEARs Valuation Platform</h1>
-        <span class="brand-subtitle">Análisis Fundamental Cuantitativo & Cualitativo con IA • 50 Activos BYMA</span>
+        <span class="brand-subtitle">50 CEDEARs BYMA • Datos Cuantitativos & Cualitativos con IA</span>
       </div>
     </div>
+
+    <!-- TOGGLE GLOBAL: MODO REAL VS MODO IDEAL -->
+    <div class="global-mode-toggle" id="globalModeToggle">
+      <span class="mode-label">Perspectiva:</span>
+      <div class="toggle-switch">
+        <button id="btnModeReal" class="toggle-btn active" data-mode="REAL">
+          <span class="toggle-dot dot-real"></span>
+          <span>Modo Real / Sostenible</span>
+        </button>
+        <button id="btnModeIdeal" class="toggle-btn" data-mode="IDEAL">
+          <span class="toggle-dot dot-ideal"></span>
+          <span>Modo Ideal (100% Guidance)</span>
+        </button>
+      </div>
+    </div>
+
     <div class="nav-actions">
       <div class="status-badge" id="systemStatus">
         <span class="status-dot"></span>
-        <span id="statusText">Conectando al servidor...</span>
+        <span id="statusText">Conectando...</span>
       </div>
       <div class="ccl-badge">
         <span>CCL Ref: <strong>$1.250 ARS</strong></span>
       </div>
-      <a href="/api/docs" target="_blank" class="btn btn-outline">
-        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"></path><polyline points="14 2 14 8 20 8"></polyline><line x1="16" y1="13" x2="8" y2="13"></line><line x1="16" y1="17" x2="8" y2="17"></line><polyline points="10 9 9 9 8 9"></polyline></svg>
+      <a href="/api/docs" target="_blank" class="btn btn-outline" title="Ver documentación OpenAPI/Swagger">
+        <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"></path><polyline points="14 2 14 8 20 8"></polyline><line x1="16" y1="13" x2="8" y2="13"></line><line x1="16" y1="17" x2="8" y2="17"></line></svg>
         Swagger Docs
       </a>
-      <button id="btnOpenAiModal" class="btn btn-primary">
-        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 2v4M12 18v4M4.93 4.93l2.83 2.83M16.24 16.24l2.83 2.83M2 12h4M18 12h4M4.93 19.07l2.83-2.83M16.24 7.76l2.83-2.83"/></svg>
-        Analizar con IA
+      <button id="btnOpenAiModal" class="btn btn-secondary btn-sm" title="Análisis opcional con IA">
+        <span>🤖 Analizar con IA</span>
       </button>
     </div>
   </header>
@@ -45,14 +60,21 @@
     <!-- Barra de Filtros Interactivos -->
     <section class="filters-card">
       <div class="filters-header">
-        <h2>Filtros Dinámicos del Mercado</h2>
+        <div class="filters-title-group">
+          <h2>Filtros Dinámicos del Mercado</h2>
+          <span class="badge badge-outline" id="activeModeBadge">Modo Activo: Real Sostenible</span>
+        </div>
         <span class="filter-count" id="filterCount">Mostrando 50 de 50 CEDEARs</span>
       </div>
+
       <div class="filters-grid">
-        <!-- Búsqueda / Ticker -->
-        <div class="filter-group">
-          <label for="filterSearch">Buscar Ticker o Empresa</label>
-          <input type="text" id="filterSearch" placeholder="Ej: AAPL, MercadoLibre, NVDA...">
+        <!-- Búsqueda / Ticker y Nombre -->
+        <div class="filter-group filter-search-group">
+          <label for="filterSearch">Buscar Ticker o Nombre de Empresa</label>
+          <div class="input-icon-wrapper">
+            <svg class="input-icon" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="11" cy="11" r="8"></circle><line x1="21" y1="21" x2="16.65" y2="16.65"></line></svg>
+            <input type="text" id="filterSearch" placeholder="Ej: AAPL, Apple, MELI, MercadoLibre, BMA...">
+          </div>
         </div>
 
         <!-- Sector -->
@@ -76,17 +98,17 @@
           <label for="filterRecommendation">Recomendación</label>
           <select id="filterRecommendation">
             <option value="ALL">Todas las Recomendaciones</option>
-            <option value="STRONG_BUY">STRONG BUY</option>
-            <option value="BUY">BUY</option>
-            <option value="HOLD">HOLD</option>
-            <option value="SELL">SELL</option>
-            <option value="STRONG_SELL">STRONG SELL</option>
+            <option value="STRONG_BUY">STRONG BUY (Compra Fuerte)</option>
+            <option value="BUY">BUY (Compra)</option>
+            <option value="HOLD">HOLD (Mantener)</option>
+            <option value="SELL">SELL (Venta)</option>
+            <option value="STRONG_SELL">STRONG SELL (Venta Fuerte)</option>
           </select>
         </div>
 
         <!-- Ventana Temporal -->
         <div class="filter-group">
-          <label for="filterHorizon">Ventana Temporal (DCF)</label>
+          <label for="filterHorizon">Horizonte DCF</label>
           <select id="filterHorizon">
             <option value="1">1 Año</option>
             <option value="3">3 Años</option>
@@ -94,179 +116,197 @@
           </select>
         </div>
 
-        <!-- Slider Upside Mínimo -->
+        <!-- Slider Upside Mínimo (Default a -100% para no filtrar nada) -->
         <div class="filter-group">
           <div class="slider-label">
-            <label for="filterUpsideMin">Upside Real Mínimo</label>
-            <span id="upsideMinValue">-50%</span>
+            <label for="filterUpsideMin" id="sliderLabelText">Upside Mínimo</label>
+            <span id="upsideMinValue">Todos (-100%)</span>
           </div>
-          <input type="range" id="filterUpsideMin" min="-50" max="100" step="5" value="-50">
+          <input type="range" id="filterUpsideMin" min="-100" max="150" step="5" value="-100">
         </div>
 
-        <!-- Reset -->
+        <!-- Botón Reset -->
         <div class="filter-group filter-actions">
-          <label>&nbsp;</label>
-          <button id="btnResetFilters" class="btn btn-secondary">Limpiar Filtros</button>
+          <button id="btnResetFilters" class="btn btn-secondary btn-full">
+            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M3 12a9 9 0 1 0 9-9 9.75 9.75 0 0 0-6.74 2.74L3 8"></path><path d="M3 3v5h5"></path></svg>
+            Restablecer
+          </button>
         </div>
       </div>
     </section>
 
-    <!-- Resumen Hero KPI Cards -->
+    <!-- Resumen Hero KPI Cards (Adaptativo al Modo) -->
     <section class="kpi-grid">
       <div class="kpi-card">
         <span class="kpi-title">CEDEARs Monitoreados</span>
         <div class="kpi-value" id="kpiTotalCompanies">50</div>
-        <span class="kpi-subtext">BYMA / Cotizaciones USD & ARS</span>
+        <span class="kpi-subtext">Catálogo precargado de BYMA</span>
       </div>
       <div class="kpi-card">
-        <span class="kpi-title">Mayor Potencial Real</span>
+        <span class="kpi-title" id="kpiTopTitle">Mayor Potencial Real</span>
         <div class="kpi-value text-emerald" id="kpiTopUpside">--</div>
-        <span class="kpi-subtext" id="kpiTopTicker">Oportunidad #1</span>
+        <span class="kpi-subtext" id="kpiTopTicker">Top Oportunidad</span>
       </div>
       <div class="kpi-card">
-        <span class="kpi-title">Upside Promedio del Mercado</span>
+        <span class="kpi-title" id="kpiAvgTitle">Upside Promedio de Mercado</span>
         <div class="kpi-value" id="kpiAvgUpside">--</div>
-        <span class="kpi-subtext">Escenario Sostenible Real</span>
+        <span class="kpi-subtext" id="kpiAvgSubtext">Bajo condiciones sostenibles</span>
       </div>
       <div class="kpi-card">
         <span class="kpi-title">Descuento de Riesgo Medio</span>
         <div class="kpi-value text-amber" id="kpiAvgRisk">--</div>
-        <span class="kpi-subtext">Ajuste por Datos Blandos</span>
+        <span class="kpi-subtext">Penalización de datos blandos / FX</span>
       </div>
     </section>
 
-    <!-- SECCIONES DEDICADAS: DATOS REALES VS DATOS IDEALES -->
+    <!-- TARJETA PRINCIPAL DE INFORMACIÓN FINANCIERA DIRECTA -->
     <section class="ticker-focus-card">
       <div class="ticker-focus-header">
         <div class="focus-title-group">
-          <span class="badge badge-primary" id="focusTicker">BMA</span>
+          <div class="ticker-badge-main" id="focusTicker">BMA</div>
           <div>
-            <h2 id="focusName">Banco Macro S.A.</h2>
+            <div class="focus-name-row">
+              <h2 id="focusName">Banco Macro S.A.</h2>
+              <span class="badge" id="focusRecommendation">STRONG BUY</span>
+            </div>
             <span class="subtext" id="focusSector">Financial • NYSE/NASDAQ: BMA • Ratio BYMA: 10:1</span>
           </div>
         </div>
         <div class="focus-controls">
-          <label for="selectFocusTicker">Inspeccionar otro CEDEAR:</label>
+          <label for="selectFocusTicker">Seleccionar CEDEAR:</label>
           <select id="selectFocusTicker" class="select-ticker"></select>
         </div>
       </div>
 
+      <!-- Tarjetas de Información Financiera Directa e Inmediata -->
+      <div class="direct-financial-cards">
+        <div class="direct-card">
+          <span class="direct-label">Cotización CEDEAR (ARS)</span>
+          <div class="direct-value" id="directPriceArs">$8.563 ARS</div>
+          <span class="direct-sub">Mercado local BYMA</span>
+        </div>
+        <div class="direct-card">
+          <span class="direct-label">Cotización Subyacente (USD)</span>
+          <div class="direct-value font-mono" id="directPriceUsd">USD 68,50</div>
+          <span class="direct-sub" id="directUnderlying">NYSE/NASDAQ</span>
+        </div>
+        <div class="direct-card">
+          <span class="direct-label">Ratio de Conversión BYMA</span>
+          <div class="direct-value font-mono" id="directRatio">10:1</div>
+          <span class="direct-sub">10 CEDEARs = 1 acción</span>
+        </div>
+        <div class="direct-card">
+          <span class="direct-label">CCL Implícito</span>
+          <div class="direct-value" id="directCcl">$1.250 ARS</div>
+          <span class="direct-sub">Tipo de cambio implícito</span>
+        </div>
+        <div class="direct-card direct-highlight" id="directTargetCard">
+          <span class="direct-label" id="directTargetLabel">Precio Objetivo Real (ARS)</span>
+          <div class="direct-value font-lg text-emerald" id="directTargetArs">$13.286 ARS</div>
+          <span class="direct-sub" id="directTargetUsd">USD 106,29</span>
+        </div>
+        <div class="direct-card direct-highlight" id="directUpsideCard">
+          <span class="direct-label" id="directUpsideLabel">Potencial de Suba Real</span>
+          <div class="direct-value font-lg text-emerald" id="directUpside">+55,16%</div>
+          <span class="direct-sub" id="directUpsideSub">Margen sostenible</span>
+        </div>
+      </div>
+
+      <!-- SECCIONES COMPARATIVAS DEDICADAS: REAL VS IDEAL -->
       <div class="dual-sections-container">
-        <!-- SECCIÓN 1: DATOS REALES (MERCADO & BASE-CASE SOSTENIBLE) -->
-        <div class="panel-section real-panel">
+        <!-- SECCIÓN 1: DATOS REALES (MERCADO & SOSTENIBLE) -->
+        <div class="panel-section real-panel" id="panelReal">
           <div class="panel-header">
-            <div class="panel-tag real-tag">SECCIÓN 1: DATOS REALES & SOSTENIBLES</div>
-            <span class="badge" id="focusRecommendation">STRONG BUY</span>
+            <div class="panel-tag real-tag">SECCIÓN 1: DATOS REALES / SOSTENIBLES</div>
+            <span class="badge badge-emerald">CONSERVADOR</span>
           </div>
-          <p class="panel-desc">Cotizaciones observadas de mercado y valuación conservadora descontada por riesgos operativos, sesgo del guidance y volatilidad cambiaria.</p>
+          <p class="panel-desc">Valuación calculada con WACC ajustado por prima de riesgo CEDEAR y penalización por incertidumbre cualitativa.</p>
 
           <div class="metrics-grid">
             <div class="metric-item">
-              <span class="metric-label">Precio Actual CEDEAR (ARS)</span>
-              <span class="metric-value" id="realCedearPrice">$8.563</span>
-            </div>
-            <div class="metric-item">
-              <span class="metric-label">Precio Actual Acción (USD)</span>
-              <span class="metric-value" id="realUsdPrice">USD 68,50</span>
-            </div>
-            <div class="metric-item">
-              <span class="metric-label">Ratio de Conversión Oficial</span>
-              <span class="metric-value font-mono" id="realRatio">10:1</span>
-            </div>
-            <div class="metric-item">
-              <span class="metric-label">CCL Implícito</span>
-              <span class="metric-value" id="realCcl">$1.250 ARS</span>
-            </div>
-            <div class="metric-item highlight-box real-highlight">
               <span class="metric-label">Precio Objetivo Real (ARS)</span>
-              <span class="metric-value font-lg text-emerald" id="realTargetCedear">$13.286</span>
+              <span class="metric-value text-emerald font-lg" id="realTargetCedear">$13.286</span>
               <span class="metric-sub" id="realTargetUsd">USD 106,29</span>
             </div>
-            <div class="metric-item highlight-box real-highlight">
+            <div class="metric-item">
               <span class="metric-label">Potencial de Suba Real</span>
-              <span class="metric-value font-lg text-emerald" id="realUpside">+55,16%</span>
-              <span class="metric-sub">Rendimiento Sostenible</span>
+              <span class="metric-value text-emerald font-lg" id="realUpsideDetail">+55,16%</span>
+              <span class="metric-sub">Retorno esperado real</span>
             </div>
             <div class="metric-item">
               <span class="metric-label">Descuento de Riesgo Aplicado</span>
               <span class="metric-value text-amber" id="realRiskDiscount">15,00%</span>
+              <span class="metric-sub">Datos blandos / operativo</span>
             </div>
             <div class="metric-item">
               <span class="metric-label">Tasa WACC con Prima</span>
-              <span class="metric-value" id="realWacc">9,52%</span>
+              <span class="metric-value font-mono" id="realWacc">9,52%</span>
+              <span class="metric-sub">Costo de capital ponderado</span>
             </div>
           </div>
         </div>
 
         <!-- SECCIÓN 2: DATOS IDEALES (BEST-CASE TEÓRICO) -->
-        <div class="panel-section ideal-panel">
+        <div class="panel-section ideal-panel" id="panelIdeal">
           <div class="panel-header">
             <div class="panel-tag ideal-tag">SECCIÓN 2: DATOS IDEALES (BEST-CASE)</div>
             <span class="badge badge-purple">100% GUIDANCE</span>
           </div>
-          <p class="panel-desc">Valuación teórica óptima asumiendo cumplimiento total de proyecciones, máxima eficiencia de márgenes y crecimiento sin fricción.</p>
+          <p class="panel-desc">Valor teórico óptimo asumiendo crecimiento sin fricciones, WACC eficiente al 8.5% y 0% de penalizaciones de riesgo.</p>
 
           <div class="metrics-grid">
             <div class="metric-item">
-              <span class="metric-label">Crecimiento Anual Asumido</span>
-              <span class="metric-value font-mono text-purple" id="idealGrowth">11,00%</span>
-            </div>
-            <div class="metric-item">
-              <span class="metric-label">Costo de Capital (WACC Teórico)</span>
-              <span class="metric-value" id="idealWacc">8,50%</span>
-            </div>
-            <div class="metric-item">
-              <span class="metric-label">Descuento por Fricciones</span>
-              <span class="metric-value text-emerald">0,00% (Sin fricción)</span>
-            </div>
-            <div class="metric-item">
-              <span class="metric-label">Múltiplo PER Objetivo</span>
-              <span class="metric-value" id="idealPer">24,0x</span>
-            </div>
-            <div class="metric-item highlight-box ideal-highlight">
               <span class="metric-label">Precio Objetivo Ideal (ARS)</span>
-              <span class="metric-value font-lg text-purple" id="idealTargetCedear">$20.578</span>
+              <span class="metric-value text-purple font-lg" id="idealTargetCedear">$20.578</span>
               <span class="metric-sub" id="idealTargetUsd">USD 164,62</span>
             </div>
-            <div class="metric-item highlight-box ideal-highlight">
+            <div class="metric-item">
               <span class="metric-label">Potencial Máximo Ideal</span>
-              <span class="metric-value font-lg text-purple" id="idealUpside">+140,32%</span>
-              <span class="metric-sub">Techo Teórico Óptimo</span>
+              <span class="metric-value text-purple font-lg" id="idealUpsideDetail">+140,32%</span>
+              <span class="metric-sub">Techo teórico óptimo</span>
+            </div>
+            <div class="metric-item">
+              <span class="metric-label">Crecimiento Anual Asumido</span>
+              <span class="metric-value font-mono text-purple" id="idealGrowth">11,00%</span>
+              <span class="metric-sub">100% ejecución de metas</span>
             </div>
             <div class="metric-item">
               <span class="metric-label">Brecha de Incertidumbre</span>
               <span class="metric-value text-blue" id="focusSpread">54,88%</span>
-            </div>
-            <div class="metric-item">
-              <span class="metric-label">Valor Compañía Ideal (EV)</span>
-              <span class="metric-value" id="idealEv">USD 11.200M</span>
+              <span class="metric-sub">Spread Ideal vs Real</span>
             </div>
           </div>
         </div>
       </div>
 
-      <!-- Síntesis Narrativa del Análisis -->
+      <!-- Síntesis Narrativa -->
       <div class="narrative-box">
         <div class="narrative-title">
           <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"></circle><line x1="12" y1="16" x2="12" y2="12"></line><line x1="12" y1="8" x2="12.01" y2="8"></line></svg>
-          Síntesis del Motor Predictivo & Articulación Cuantitativa/Cualitativa
+          Diagnóstico y Síntesis del Modelo Predictivo
         </div>
         <p id="focusNarrative" class="narrative-content">Cargando síntesis...</p>
       </div>
     </section>
 
-    <!-- GRÁFICOS COMPARATIVOS INTERACTIVOS -->
+    <!-- GRÁFICOS COMPARATIVOS INTERACTIVOS (CHART.JS) -->
     <section class="charts-grid">
       <!-- Gráfico 1: Barras Comparativas -->
       <div class="chart-card">
         <div class="chart-header">
           <div>
-            <h3>Comparativa de Precios: Actual vs. Real Sostenible vs. Ideal (ARS)</h3>
-            <span class="subtext">Evaluación de múltiples CEDEARs simultáneamente</span>
+            <h3 id="priceChartTitle">Comparativa de Precios: Actual vs. Objetivo (ARS)</h3>
+            <span class="subtext" id="priceChartSubtext">Comparando activos filtrados</span>
           </div>
-          <div class="chart-toggles">
-            <button class="btn-toggle active" id="btnCurrencyArs">ARS ($)</button>
-            <button class="btn-toggle" id="btnCurrencyUsd">USD</button>
+          <div class="chart-controls-group">
+            <div class="chart-toggles">
+              <button class="btn-toggle active" id="btnScopeSelected">Empresa Actual</button>
+              <button class="btn-toggle" id="btnScopeTop">Top 8 Filtro</button>
+            </div>
+            <div class="chart-toggles">
+              <button class="btn-toggle active" id="btnCurrencyArs">ARS ($)</button>
+              <button class="btn-toggle" id="btnCurrencyUsd">USD</button>
+            </div>
           </div>
         </div>
         <div class="chart-container">
@@ -279,7 +319,7 @@
         <div class="chart-header">
           <div>
             <h3>Proyección Temporal de Flujo de Fondos (FCF Proyectado)</h3>
-            <span class="subtext" id="lineChartSubtext">Trayectoria a 5 años para el ticker seleccionado</span>
+            <span class="subtext" id="lineChartSubtext">Trayectoria a 5 años año a año</span>
           </div>
           <span class="badge badge-outline" id="lineChartTickerBadge">BMA</span>
         </div>
@@ -292,10 +332,10 @@
       <div class="chart-card full-width">
         <div class="chart-header">
           <div>
-            <h3>Matriz de Inversión: Riesgo Cualitativo vs. Potencial de Suba Real</h3>
-            <span class="subtext">Cuadrante superior izquierdo representa oportunidades con menor riesgo y mayor upside</span>
+            <h3 id="scatterChartTitle">Matriz de Oportunidades: Riesgo Cualitativo vs. Retorno Proyectado</h3>
+            <span class="subtext">Haz clic en cualquier punto para inspeccionar el activo en detalle</span>
           </div>
-          <span class="badge badge-primary">Mapa de Oportunidades</span>
+          <span class="badge badge-primary" id="scatterModeBadge">Eje Y: Upside Real Sostenible</span>
         </div>
         <div class="chart-container tall">
           <canvas id="chartScatter"></canvas>
@@ -303,15 +343,15 @@
       </div>
     </section>
 
-    <!-- TABLA SCREENER DE 50 CEDEARS -->
+    <!-- TABLA SCREENER DE 50 CEDEARs -->
     <section class="table-card">
       <div class="table-header">
         <div>
           <h3>Screener de Mercado: Ranking de los 50 CEDEARs BYMA</h3>
-          <span class="subtext">Haz clic en cualquier fila para seleccionarla y ver sus gráficos dedicados</span>
+          <span class="subtext">Haz clic en cualquier fila para seleccionarla y actualizar las métricas y gráficos</span>
         </div>
         <div class="table-actions">
-          <input type="text" id="tableFilterInput" placeholder="Filtrar en tabla..." class="input-sm">
+          <span class="subtext" id="tableStatusCount">50 activos</span>
         </div>
       </div>
       <div class="table-responsive">
@@ -322,11 +362,11 @@
               <th data-sort="ticker">Ticker</th>
               <th data-sort="companyName">Empresa</th>
               <th data-sort="sector">Sector</th>
-              <th data-sort="currentPriceCedearArs">Precio Actual (ARS)</th>
-              <th data-sort="realTargetCedearArs">Target Real (ARS)</th>
-              <th data-sort="idealTargetCedearArs">Target Ideal (ARS)</th>
-              <th data-sort="realUpsidePercentage">Upside Real (%)</th>
-              <th data-sort="idealUpsidePercentage">Upside Ideal (%)</th>
+              <th data-sort="currentPriceCedearArs">Cotización ARS</th>
+              <th data-sort="currentPriceUnderlyingUsd">Cotización USD</th>
+              <th data-sort="cedearRatio">Ratio BYMA</th>
+              <th data-sort="targetPrice" id="thTargetPrice">Target Real (ARS)</th>
+              <th data-sort="upsidePercentage" id="thUpside">Upside Real (%)</th>
               <th data-sort="riskDiscountPercentage">Riesgo IA</th>
               <th data-sort="recommendation">Recomendación</th>
               <th>Acción</th>
@@ -340,7 +380,7 @@
     </section>
   </main>
 
-  <!-- MODAL DE ANÁLISIS CUALITATIVO CON IA -->
+  <!-- MODAL DE ANÁLISIS CUALITATIVO CON IA (OPCIONAL) -->
   <div class="modal-overlay" id="aiModal">
     <div class="modal-card">
       <div class="modal-header">
@@ -348,7 +388,7 @@
           <div class="brand-icon">🤖</div>
           <div>
             <h3>Análisis Cualitativo de Datos Blandos con Google Gemini</h3>
-            <span class="subtext">Procesa transcripciones de Earnings Calls, guidance o noticias no estructuradas</span>
+            <span class="subtext">Opcional: ingresa comentarios de management para recalcular la tasa de riesgo</span>
           </div>
         </div>
         <button class="modal-close" id="btnCloseAiModal">&times;</button>
@@ -367,7 +407,7 @@
 
         <div class="form-group">
           <label for="aiTranscript">Transcripción de Earnings Call / Comentarios del Management</label>
-          <textarea id="aiTranscript" rows="4" placeholder="Ej: We achieved record quarterly revenue with margin expansion across our fintech and e-commerce divisions..."></textarea>
+          <textarea id="aiTranscript" rows="4" placeholder="Ej: We achieved record quarterly revenue with margin expansion across our divisions..."></textarea>
         </div>
 
         <div class="form-group">
@@ -383,7 +423,6 @@
         </div>
       </form>
 
-      <!-- Resultado del Análisis -->
       <div class="ai-result-box" id="aiResultBox" style="display: none;">
         <h4>Resultado del Análisis de IA:</h4>
         <div class="ai-result-grid">
